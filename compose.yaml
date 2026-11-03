@@ -2,7 +2,7 @@ name: warden
 services:
   runner:
     container_name: warden-runner
-    image: warden
+    image: ghcr.io/${WARDEN_IMAGE_OWNER:-omznc}/warden-runner:${WARDEN_VERSION:-latest}
     build:
       context: .
       dockerfile: Containerfile
@@ -19,7 +19,7 @@ services:
   # It reads tests-in and writes tests-out. It runs as uid 1001 (agent), not as the runner.
   tester:
     container_name: warden-tester
-    image: warden
+    image: ghcr.io/${WARDEN_IMAGE_OWNER:-omznc}/warden-runner:${WARDEN_VERSION:-latest}
     restart: unless-stopped
     command: ["bin/tester.sh"]
     network_mode: none
@@ -37,7 +37,7 @@ services:
       - tests-in:/tests-in:ro
       - tests-out:/tests-out
   ui:
-    image: warden-ui
+    image: ghcr.io/${WARDEN_IMAGE_OWNER:-omznc}/warden-ui:${WARDEN_VERSION:-latest}
     build:
       context: app
       dockerfile: Containerfile
