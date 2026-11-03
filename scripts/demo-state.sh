@@ -17,8 +17,8 @@ trap 'rm -rf "$w"' EXIT
 now=$(date -u +%s)
 iso() { date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ; }
 stamp() { date -u -d "@$1" +%Y%m%dT%H%M%SZ; }
-# rt <cycle> <slot>: start time of a run. Cycle 13 is the latest, 12 hours apart.
-rt() { echo $((now - 3 * 3600 - (13 - $1) * 43200 + $2 * 360)); }
+# rt <cycle> <slot>: start time of a run. Cycle 13 is the latest, 24 hours apart, so each of 14 days has runs.
+rt() { echo $((now - 3 * 3600 - (13 - $1) * 86400 + $2 * 360)); }
 
 # --- projects and settings ---------------------------------------------------
 jq -n '[
@@ -329,7 +329,7 @@ findings_for() {
 	13\|web\|instrumentation-gaps) fnd checkout-submit-missing-event pending medium "Capture checkout_submitted when a customer places an order" ;;
 	13\|web\|warden-ci) fnd ci-482-merge-conflict pending-pr-update low "Resolve the merge conflict in PR #482" 482 ;;
 	12\|web\|github-issues) fnd issue-311-checkout-timeout pending-comment medium "Comment on #311: checkout page hangs on slow connections" 311 ;;
-	13\|web\|signals-scout-error-tracking) fnd resize-observer-loop-spike skipped-rejected low "Spike of ResizeObserver loop errors on /dashboard" ;;
+	13\|web\|signals-scout-error-tracking) fnd resize-observer-loop-spike skipped-dup low "Spike of ResizeObserver loop errors on /dashboard" ;;
 	9\|web\|signals-scout-error-tracking) fnd resize-observer-loop-spike pending-issue low "Spike of ResizeObserver loop errors on /dashboard" ;;
 	10\|web\|signals-scout-web-vitals) fnd pricing-lcp-regression pending-issue medium "Largest Contentful Paint on /pricing is 4.1 s at the 75th percentile" ;;
 	11\|web\|instrumentation-gaps) fnd track-plan-upgraded-event pending medium "Capture plan_upgraded on the billing page" ;;
@@ -377,7 +377,7 @@ for c in $(seq 0 13); do
 	slot=0
 	for s in "${web[@]}"; do record "$c" $slot web "$s"; slot=$((slot + 1)); done
 	for s in "${api[@]}"; do record "$c" $slot api "$s"; slot=$((slot + 1)); done
-	if ((c <= 5)); then
+	if ((c <= 10)); then
 		record "$c" 12 mobile signals-scout-error-tracking
 		record "$c" 13 mobile signals-scout-product-analytics
 	fi
