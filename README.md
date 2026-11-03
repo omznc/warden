@@ -1,4 +1,9 @@
-# warden
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/warden-lockup-dark.svg">
+    <img alt="Warden" src="docs/assets/warden-lockup-light.svg" width="240">
+  </picture>
+</p>
 
 Warden runs headless Claude Code on a schedule.
 Each run uses one scout skill on one project.
