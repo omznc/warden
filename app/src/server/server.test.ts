@@ -8,6 +8,7 @@ import type { Env } from "./env";
 import { checkRequest, requireSession } from "./guard";
 import { stateDir } from "./paths";
 import { COOKIE, createSession, SESSION_DAYS, verifySession } from "./session";
+import { ACTION_LABELS, actionGroup } from "@/lib/format";
 import { isSecretKey, pickKeyEnv, secretValueError } from "@/lib/secrets";
 import { buildProject, createProject, removeProject } from "./connections";
 import { saveSecret, secretRows } from "./secrets";
@@ -598,5 +599,20 @@ describe("coolify", () => {
 		expect(html).toContain("This token can write.");
 		expect(html).toContain("Works, check the token");
 		expect(html).not.toContain("ttttt");
+	});
+});
+
+describe("finding action labels", () => {
+	// Every value that bin/run-scout.sh and bin/submit-approved.sh can write.
+	const runnerActions = [
+		"issue", "comment", "pr", "pr-update", "pr-update-failed",
+		"pending", "pending-issue", "pending-comment", "pending-pr-update",
+		"skipped-cap", "skipped-mode", "skipped-dup",
+		"blocked-secret", "blocked-path", "blocked-conflict",
+		"dry-issue", "dry-comment", "dry-pr", "dry-pr-update",
+	];
+	test.each(runnerActions)("%s has a label", (a) => {
+		expect(ACTION_LABELS[a]).toBeTruthy();
+		expect(actionGroup(a)).not.toBe("other");
 	});
 });

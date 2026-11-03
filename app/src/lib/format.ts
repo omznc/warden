@@ -11,6 +11,8 @@ export type Group = "issue" | "comment" | "pr" | "pending" | "dry" | "skipped" |
 export function actionGroup(action: string | undefined): Group {
 	const a = action ?? "";
 	if (a === "issue" || a === "comment" || a === "pr") return a;
+	if (a === "pr-update") return "pr";
+	if (a === "pr-update-failed") return "blocked";
 	if (a === "pending" || a.startsWith("pending-")) return "pending";
 	if (a.startsWith("dry")) return "dry";
 	if (a.startsWith("skipped")) return "skipped";
@@ -22,14 +24,22 @@ export const ACTION_LABELS: Record<string, string> = {
 	issue: "Issue created",
 	comment: "Comment added",
 	pr: "PR opened",
+	"pr-update": "PR updated",
+	"pr-update-failed": "Blocked: PR update failed",
 	pending: "PR pending approval",
 	"pending-issue": "Issue pending approval",
 	"pending-comment": "Comment pending approval",
+	"pending-pr-update": "PR update pending approval",
 	"skipped-cap": "Skipped: limit reached",
 	"skipped-mode": "Skipped: issues mode",
 	"skipped-dup": "Skipped: duplicate",
 	"blocked-secret": "Blocked: secret",
 	"blocked-path": "Blocked: path",
+	"blocked-conflict": "Blocked: merge conflict",
+	"dry-issue": "Dry run: issue",
+	"dry-comment": "Dry run: comment",
+	"dry-pr": "Dry run: PR",
+	"dry-pr-update": "Dry run: PR update",
 };
 
 export const ACTION_HELP: Record<string, string> = { "skipped-mode": "Switch the project to prs mode to get this fix as a PR." };
