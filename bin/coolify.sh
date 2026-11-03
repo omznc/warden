@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Coolify helpers for the coolify scout and for the inbox check. Source this file after lib.sh.
 # All requests are GET requests. The runner holds the tokens. The agent never gets a token.
-# API facts (Coolify 4.5.3, see docs/coolify.md):
+# API facts (Coolify 4.5.3, see docs/domains/coolify.md):
 # - GET /api/v1/applications lists the applications. The answer has fields that hold secrets (webhook secrets,
 #   Compose content, custom labels), so jq keeps a list of allowed fields and drops all others.
 # - GET /api/v1/deployments/applications/<uuid>?take=N lists the deployments. Each has a build log (field logs).

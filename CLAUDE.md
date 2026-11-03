@@ -96,6 +96,7 @@ A subsystem with a long description lives in `docs/domains/`. Read the file you 
 | `docs/domains/coolify.md` | `bin/coolify.sh`, the scout `coolify`, Coolify settings and tokens |
 | `docs/domains/state.md` | any file in `/state`, `projects.json`, `settings.json`, `runs.jsonl`, requests, the cost cap |
 | `docs/domains/deployment.md` | `compose.yaml`, the `Containerfile`, volumes, a proxy, upgrades |
+| `docs/domains/release.md` | `.github/workflows/release.yml`, a version tag, the images, the version rules |
 
 ## Rules that survive the split
 
