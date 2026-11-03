@@ -11,6 +11,23 @@ The agent reads the PostHog data of the project (read-only) and the repository c
 The agent returns findings as JSON.
 The scripts, not the agent, open the GitHub issues and the draft pull requests.
 
+[![Release](https://img.shields.io/github/v/release/omznc/warden)](https://github.com/omznc/warden/releases)
+
+![Overview](docs/screenshots/overview-dark.png)
+
+## Screenshots
+
+| Review (PR) | Review (issue) | Findings |
+| :---: | :---: | :---: |
+| [<img src="docs/screenshots/review-pr-dark.png" width="280">](docs/screenshots/review-pr-dark.png) | [<img src="docs/screenshots/review-issue-light.png" width="280">](docs/screenshots/review-issue-light.png) | [<img src="docs/screenshots/findings-light.png" width="280">](docs/screenshots/findings-light.png) |
+| **Runs** | **Project** | **Integrations** |
+| [<img src="docs/screenshots/runs-dark.png" width="280">](docs/screenshots/runs-dark.png) | [<img src="docs/screenshots/project-light.png" width="280">](docs/screenshots/project-light.png) | [<img src="docs/screenshots/integrations-dark.png" width="280">](docs/screenshots/integrations-dark.png) |
+| **Overview (light)** | **Coolify** | |
+| [<img src="docs/screenshots/overview-light.png" width="280">](docs/screenshots/overview-light.png) | [<img src="docs/screenshots/coolify-light.png" width="280">](docs/screenshots/coolify-light.png) | |
+
+The screenshots use invented data. The script `scripts/demo-state.sh` builds the same demo state.
+More screenshots are in [`docs/screenshots`](docs/screenshots).
+
 ## Approval gate
 
 Nothing leaves warden without approval, unless a project has "Auto-submit" on.
@@ -25,7 +42,7 @@ The default mode is `dry`: no GitHub writes.
 - A Claude Code token (`claude setup-token`).
 - A GitHub token that can read and write issues and pull requests on the project repositories.
 - A PostHog personal API key with the "MCP Server" preset. Use one key for each PostHog account or project.
-- Optional: a Hermes webhook (notices), Sentry, Coolify (see `docs/coolify.md`), and a PostHog project token for events about the runs.
+- Optional: a Hermes webhook (notices), Sentry, Coolify (see `docs/domains/coolify.md`), and a PostHog project token for events about the runs.
 
 ## Quick start
 
@@ -64,7 +81,7 @@ Without it, notices have no link.
 - The runner scans every item for secrets before it saves the item and again before it writes to GitHub. A hit blocks the write.
 - Text from issues, comments and code is untrusted data for the agent.
 
-Details are in `docs/reference.md`.
+Details are in `docs/domains/` and in the table "Where the rest lives" of the root `CLAUDE.md`.
 
 ## Scouts
 
