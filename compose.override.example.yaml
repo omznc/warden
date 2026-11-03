@@ -1,0 +1,25 @@
+# Example override for a deployment behind a reverse proxy.
+# Copy this file to compose.override.yaml. Compose reads that file with compose.yaml.
+#
+# - The runner joins an external network of a Hermes gateway (optional).
+#   Remove the "hermes" parts if you do not use Hermes.
+# - The UI joins an external proxy network. The proxy reaches it at warden-ui:8650.
+#
+# Create the external networks first, for example: podman network create proxy
+services:
+  runner:
+    networks:
+      - default
+      - hermes
+  ui:
+    container_name: warden-ui
+    networks:
+      - default
+      - proxy
+networks:
+  hermes:
+    external: true
+    name: ${HERMES_NETWORK:-hermes}
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}

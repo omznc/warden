@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the runner image
+        run: docker build -f Containerfile -t warden .
+      - name: Shellcheck
+        run: docker run --rm -v "$PWD":/src -w /src koalaman/shellcheck:stable bin/*.sh test/*.sh
+      # The image has jq 1.6, so the shell tests run inside it. probe.sh needs a real token and stays out.
+      - name: Shell tests
+        run: |
+          for t in gate issues requests ci inbox tester sync ops upstream-diff hermes coolify; do
+            docker run --rm -v "$PWD":/src -w /src warden bash "test/$t.sh"
+          done
+      # This test needs root: it makes files of the user agent and runs the preparation as the user runner.
+      - name: Agent permissions
+        run: docker run --rm -u 0 -v "$PWD":/src -w /src warden bash test/agent-perm.sh
+      - name: Webhook signature
+        run: docker run --rm -v "$PWD":/src -w /src warden bash bin/test-notify.sh
+
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run build

@@ -1,0 +1,16 @@
+FROM docker.io/oven/bun:1 AS build
+WORKDIR /src
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+COPY . .
+RUN bun run build
+
+# The build output holds the server and all its code. It needs no node_modules.
+FROM docker.io/oven/bun:1-slim
+ENV NODE_ENV=production PORT=8650 HOST=0.0.0.0 STATE_ROOT=/state
+RUN mkdir -p /state /app && chown bun:bun /state
+WORKDIR /app
+COPY --from=build --chown=bun:bun /src/.output ./.output
+USER bun
+EXPOSE 8650
+CMD ["bun", ".output/server/index.mjs"]

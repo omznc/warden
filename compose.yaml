@@ -1,0 +1,70 @@
+name: warden
+services:
+  runner:
+    container_name: warden-runner
+    image: warden
+    build:
+      context: .
+      dockerfile: Containerfile
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - state:/state
+      - work:/work
+      - inbox:/inbox
+      - secrets:/secrets
+      - tests-in:/tests-in
+      - tests-out:/tests-out:ro
+  # Runs the tests of a PR. No network, no secrets, no state.
+  # It reads tests-in and writes tests-out. It runs as uid 1001 (agent), not as the runner.
+  tester:
+    container_name: warden-tester
+    image: warden
+    restart: unless-stopped
+    command: ["bin/tester.sh"]
+    network_mode: none
+    mem_limit: 2g
+    cpus: 1.0
+    pids_limit: 512
+    user: "1001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    volumes:
+      - tests-in:/tests-in:ro
+      - tests-out:/tests-out
+  ui:
+    image: warden-ui
+    build:
+      context: app
+      dockerfile: Containerfile
+    restart: unless-stopped
+    depends_on:
+      - tester
+    environment:
+      WARDEN_USER: ${WARDEN_USER:-admin}
+      WARDEN_PASSWORD: ${WARDEN_PASSWORD:-}
+      WARDEN_SESSION_SECRET: ${WARDEN_SESSION_SECRET:-}
+      MODE: ${MODE:-dry}
+      INTERVAL_HOURS: ${INTERVAL_HOURS:-12}
+      MAX_TURNS: ${MAX_TURNS:-60}
+      HERMES_WEBHOOK_URL: ${HERMES_WEBHOOK_URL:-}
+      WARDEN_URL: ${WARDEN_URL:-}
+      INBOX_ROOT: /inbox
+      TESTS_ROOT: /tests-out
+    volumes:
+      - state:/state
+      - inbox:/inbox
+      - tests-out:/tests-out:ro
+    ports:
+      - "127.0.0.1:8650:8650"
+volumes:
+  state:
+  work:
+  inbox:
+  secrets:
+  tests-in:
+  tests-out:

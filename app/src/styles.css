@@ -1,0 +1,145 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
+/* Warden colour tokens for Tailwind v4 + shadcn/ui.
+   Merge into your globals.css. Dark mode follows the system. */
+
+:root {
+  --background: #F7F7F5;
+  --foreground: #18181B;
+  --card: #FFFFFF;
+  --card-foreground: #18181B;
+  --popover: #FFFFFF;
+  --popover-foreground: #18181B;
+  --primary: #18181B;            /* Approve button */
+  --primary-foreground: #F7F7F5;
+  --secondary: #F2F2EF;
+  --secondary-foreground: #18181B;
+  --muted: #F2F2EF;              /* table heads, day rows */
+  --muted-foreground: #5A5A62;   /* meta, captions */
+  --accent: #F2F2EF;
+  --accent-foreground: #18181B;
+  --destructive: #B42318;
+  --border: #E2E2DD;
+  --input: #CFCFC9;
+  --ring: #2F5BD3;
+  --link: #2F5BD3;
+  --radius: 0.5rem;
+
+  --status-ok: #17663A;          --status-ok-bg: #E4F2E8;
+  --status-error: #B42318;       --status-error-bg: #FBE9E7;
+  --status-pending: #8A5300;     --status-pending-bg: #FAEFD6;
+  --status-info: #1F4FB8;        --status-info-bg: #E7EDFB;
+  --status-neutral: #52525B;     --status-neutral-bg: #ECECE8;
+
+  --diff-add: #EAF6ED;  --diff-add-gutter: #D4ECDB;  --diff-add-fg: #0F5A25;
+  --diff-del: #FCEEEB;  --diff-del-gutter: #F6D8D2;  --diff-del-fg: #9A2410;
+  --diff-hunk: #EEF2FB;
+  --skeleton: #E9E9E5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0F1012;
+    --foreground: #ECECEE;
+    --card: #17181B;
+    --card-foreground: #ECECEE;
+    --popover: #17181B;
+    --popover-foreground: #ECECEE;
+    --primary: #ECECEE;
+    --primary-foreground: #0F1012;
+    --secondary: #1E1F23;
+    --secondary-foreground: #ECECEE;
+    --muted: #1E1F23;
+    --muted-foreground: #A3A3AC;
+    --accent: #1E1F23;
+    --accent-foreground: #ECECEE;
+    --destructive: #FF8F80;
+    --border: #2A2B30;
+    --input: #3A3B41;
+    --ring: #86A2F7;
+    --link: #86A2F7;
+
+    --status-ok: #6BD394;        --status-ok-bg: #12291B;
+    --status-error: #FF8F80;     --status-error-bg: #3A1714;
+    --status-pending: #F0C15A;   --status-pending-bg: #33270C;
+    --status-info: #97B3FF;      --status-info-bg: #18244A;
+    --status-neutral: #B6B6BE;   --status-neutral-bg: #26272C;
+
+    --diff-add: #0F2418;  --diff-add-gutter: #163824;  --diff-add-fg: #8BE2AA;
+    --diff-del: #2B1412;  --diff-del-gutter: #4A1F1B;  --diff-del-fg: #FFAEA3;
+    --diff-hunk: #161D33;
+    --skeleton: #24252A;
+  }
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+
+  --color-status-ok: var(--status-ok);           --color-status-ok-bg: var(--status-ok-bg);
+  --color-status-error: var(--status-error);     --color-status-error-bg: var(--status-error-bg);
+  --color-status-pending: var(--status-pending); --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-info: var(--status-info);       --color-status-info-bg: var(--status-info-bg);
+  --color-status-neutral: var(--status-neutral); --color-status-neutral-bg: var(--status-neutral-bg);
+
+  --color-diff-add: var(--diff-add);   --color-diff-add-gutter: var(--diff-add-gutter);   --color-diff-add-fg: var(--diff-add-fg);
+  --color-diff-del: var(--diff-del);   --color-diff-del-gutter: var(--diff-del-gutter);   --color-diff-del-fg: var(--diff-del-fg);
+  --color-diff-hunk: var(--diff-hunk);
+  --color-skeleton: var(--skeleton);
+
+  --radius-sm: 4px;   /* tags, inline code */
+  --radius-md: 6px;   /* controls */
+  --radius-lg: 8px;   /* cards */
+  --radius-xl: 10px;  /* dialogs */
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	html {
+		color-scheme: light dark;
+	}
+	body {
+		@apply bg-background font-sans text-[13px] leading-5 text-foreground antialiased;
+	}
+	a:not([data-slot="button"]) {
+		@apply text-link;
+	}
+	time,
+	.tabular {
+		font-variant-numeric: tabular-nums;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		* {
+			transition-duration: 0.01ms !important;
+			animation-duration: 0.01ms !important;
+		}
+	}
+}

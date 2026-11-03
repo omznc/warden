@@ -1,0 +1,34 @@
+[
+  {
+    "name": "web",
+    "repo": "acme/web",
+    "posthog_project_id": "12345",
+    "posthog_key_env": "POSTHOG_API_KEY_PERSONAL",
+    "posthog_ui": "https://eu.posthog.com/project/12345",
+    "notes": "Web app of Acme. Add notes about the product here.",
+    "scouts": [
+      "signals-scout-error-tracking",
+      "signals-scout-web-vitals",
+      "signals-scout-product-analytics",
+      "signals-scout-session-replay",
+      "github-issues",
+      "signals-scout-observability-gaps",
+      "instrumentation-gaps",
+      "warden-ci"
+    ],
+    "test_command": "bun test"
+  },
+  {
+    "name": "api",
+    "repo": "acme/api",
+    "posthog_project_id": "67890",
+    "posthog_key_env": "POSTHOG_API_KEY_PERSONAL",
+    "posthog_ui": "https://eu.posthog.com/project/67890",
+    "notes": "Backend API of Acme. No web pages, so no web vitals and no session replay.",
+    "scouts": [
+      "signals-scout-error-tracking",
+      "github-issues",
+      "warden-ci"
+    ]
+  }
+]
