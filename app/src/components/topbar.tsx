@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Clock, LogOut, Shield } from "lucide-react";
+import { Clock, LogOut } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { relative } from "@/lib/format";
 import { shellQuery } from "@/lib/queries";
@@ -31,9 +32,8 @@ export function TopBar() {
 	return (
 		<header className="border-b bg-card">
 			<div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-5 px-4 sm:px-6 min-[640px]:h-12 min-[640px]:flex-nowrap">
-				<Link to="/" className="flex h-11 items-center gap-2 text-sm font-semibold text-foreground no-underline">
-					<Shield aria-hidden className="size-[18px]" />
-					Warden
+				<Link to="/" className="flex h-11 items-center no-underline">
+					<Logo className="h-6" />
 				</Link>
 				<nav aria-label="Main" className="order-3 -mx-4 flex w-[calc(100%+2rem)] gap-5 overflow-x-auto px-4 max-[639px]:h-9 min-[640px]:order-none min-[640px]:mx-0 min-[640px]:w-auto min-[640px]:px-0">
 					{NAV.map((n) => (

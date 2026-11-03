@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +42,9 @@ function LoginPage() {
 		<main className="mx-auto flex min-h-screen max-w-sm items-center px-4">
 			<form method="post" action="/login" className="w-full space-y-4 rounded-xl border bg-card p-6">
 				<div>
-					<h1 className="text-sm font-semibold">Sign in to Warden</h1>
+					<h1 className="mb-3">
+						<Logo className="h-7" />
+					</h1>
 					<p className="text-muted-foreground">Your session ended or you are new here.</p>
 				</div>
 				<input type="hidden" name="redirect" value={safeRedirect(redirect)} />
