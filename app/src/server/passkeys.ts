@@ -1,8 +1,12 @@
-import { generateAuthenticationOptions, generateRegistrationOptions, verifyAuthenticationResponse, verifyRegistrationResponse } from "@simplewebauthn/server";
+// @simplewebauthn/server loads @peculiar/x509, which needs this polyfill first. A static import of the
+// library runs before the polyfill in the built server and stops the start, so load it on first use.
+import "reflect-metadata";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import type { Env } from "./env";
 import { readJson, writeJsonAtomic } from "./fsio";
 import { checkPassword, guardedCheck } from "./limiter";
+
+const webauthn = () => import("@simplewebauthn/server");
 
 export const CHALLENGE_TTL_MS = 300_000;
 const MAX_CHALLENGES = 200;
@@ -79,7 +83,7 @@ export async function registrationOptions(password: string, e: Env, delayMs = 10
 	const { rpID } = requireParty(e);
 	const existing = readPasskeys(e);
 	if (existing.length >= MAX_PASSKEYS) throw new Error("Too many passkeys. Delete one first.");
-	const options = await generateRegistrationOptions({
+	const options = await (await webauthn()).generateRegistrationOptions({
 		rpName: "Warden",
 		rpID,
 		userName: e.user,
@@ -95,7 +99,7 @@ export async function registrationOptions(password: string, e: Env, delayMs = 10
 export async function registerPasskey(input: { password: string; name: string; response: RegistrationResponseJSON }, e: Env, delayMs = 1000): Promise<PasskeyRow[]> {
 	await requirePassword(input.password, e, delayMs);
 	const { rpID, origin } = requireParty(e);
-	const verified = await verifyRegistrationResponse({
+	const verified = await (await webauthn()).verifyRegistrationResponse({
 		response: input.response,
 		expectedChallenge: (c) => takeChallenge("register", c),
 		expectedOrigin: origin,
@@ -124,7 +128,7 @@ export async function deletePasskey(input: { password: string; id: string }, e: 
 
 export async function loginOptions(e: Env) {
 	const { rpID } = requireParty(e);
-	const options = await generateAuthenticationOptions({ rpID, userVerification: "required" });
+	const options = await (await webauthn()).generateAuthenticationOptions({ rpID, userVerification: "required" });
 	issueChallenge("login", options.challenge);
 	return options;
 }
@@ -134,7 +138,7 @@ async function verifyLogin(response: AuthenticationResponseJSON, e: Env): Promis
 	const stored = readPasskeys(e).find((c) => c.id === response.id);
 	if (!party || !stored) return false;
 	try {
-		const result = await verifyAuthenticationResponse({
+		const result = await (await webauthn()).verifyAuthenticationResponse({
 			response,
 			expectedChallenge: (c) => takeChallenge("login", c),
 			expectedOrigin: party.origin,
