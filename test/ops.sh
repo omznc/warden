@@ -52,7 +52,7 @@ mkitem rejected-old rejected "{\"created\": \"$(ago 40)\"}"
 echo bundle >"$pend/old-created/bundle"
 echo diff >"$pend/old-created/patch.diff"
 st() { jq -r .status "$pend/$1"/meta.json; }
-check "item_epoch reads the created field" test "$(bash -c "source '$root/bin/lib.sh'; item_epoch '$pend/old-created/meta.json'")" = "$(date -u -d "$(ago 40)" +%s)"
+check "item_epoch reads the created field" test "$(bash -c "source '$root/bin/lib.sh'; item_epoch '$pend/old-created/meta.json'")" = "$(date -u -d "$(jq -r .created "$pend/old-created/meta.json")" +%s)"
 check "item_epoch reads the stamp in the id" bash -c "source '$root/bin/lib.sh'; [[ \$(item_epoch '$(echo "$pend"/old-stamp-*/meta.json)') -lt \$(date -d '39 days ago' +%s) ]]"
 check "item_epoch ignores the mtime of meta.json" bash -c "source '$root/bin/lib.sh'; [[ \$(item_epoch '$pend/old-dir/meta.json') -lt \$(date -d '39 days ago' +%s) ]]"
 check "stale_days defaults to 30" test "$(bash -c "source '$root/bin/lib.sh'; stale_days")" = 30
