@@ -312,6 +312,27 @@ health_record() {
 # clean_running: delete the running files that a crash or a power reset left.
 clean_running() { rm -f "${STATE_ROOT:-/tmp/warden-state}"/running/*.json; }
 
+# checkout_lock <project>: open $STATE_ROOT/checkout-<project>.lock on a free fd and set CHECKOUT_FD.
+# The caller takes the lock with flock on that fd. run-scout.sh holds it for the whole run.
+# submit-approved.sh holds it for the git work of one PR. The file is in the top of the state (mode 600).
+# A child process that sudo starts has no fd above 2, so the agent never holds the lock.
+checkout_lock() {
+	local old rc
+	[[ $1 =~ ^[a-z0-9][a-z0-9-]*$ ]] || return 1
+	old=$(umask)
+	umask 077
+	exec {CHECKOUT_FD}>"${STATE_ROOT:-/tmp/warden-state}/checkout-$1.lock"
+	rc=$?
+	umask "$old"
+	return $rc
+}
+
+# checkout_unlock: close the fd of checkout_lock. This releases the lock.
+checkout_unlock() {
+	[[ -z ${CHECKOUT_FD:-} ]] || exec {CHECKOUT_FD}>&-
+	CHECKOUT_FD=
+}
+
 # url_ok <url>: a http or https URL with a plain host, at most 500 characters, no user info.
 url_ok() {
 	local re='^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[^[:space:]"<>\\]*)?$'

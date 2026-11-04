@@ -45,13 +45,24 @@ projects_file >/dev/null
 clean_running
 # The volumes can come from an older image: fix the modes and the world-write bits one time at the start.
 harden_dirs
+# A scout run can take 30 minutes. This loop sends an approved item without a wait for the run.
+# submit-approved.sh takes a lock, so the calls below are safe.
+submit_loop() {
+	while true; do
+		"$root/bin/submit-approved.sh" </dev/null || echo "submit-approved failed" >&2
+		sleep 15
+	done
+}
+submit_loop &
+submit_pid=$!
+trap 'kill "$submit_pid" 2>/dev/null' EXIT
 while true; do
 	# Fix the modes at each loop. Skip the walk over all files: run-scout.sh does it for one project.
 	harden_dirs --quick
 	# Short loop chunk: an approval in the UI becomes a draft PR within about a minute.
+	"$root/bin/submit-approved.sh" </dev/null || echo "submit-approved failed" >&2
 	"$root/bin/inbox.sh" || echo "inbox failed" >&2
 	"$root/bin/discover.sh" || echo "discover failed" >&2
-	"$root/bin/submit-approved.sh" || echo "submit-approved failed" >&2
 	tests_gc
 	# Sync the GitHub state at most one time in 10 minutes.
 	if (($(date +%s) - $(cat "$STATE_ROOT/last-sync" 2>/dev/null || echo 0) >= 600)); then

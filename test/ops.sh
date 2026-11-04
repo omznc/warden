@@ -72,6 +72,35 @@ mkitem later pending "{\"created\": \"$(ago 40)\"}"
 check "the stale_days setting is used" test "$(st later)" = pending
 rm -f "$STATE_ROOT/settings.json"
 
+echo "== submit lock and checkout lock"
+mkitem lock-issue approved
+mkitem run-pr approved '{"kind": "pr"}'
+mkitem rej-lock rejected '{"reject_reason": "not useful"}'
+pad=$STATE_ROOT/demo/s/scratchpad.md
+fb() { grep -c "REJECTED rej-lock" "$pad" 2>/dev/null || true; }
+exec 8>"$STATE_ROOT/submit.lock"
+flock -n 8
+"$root/bin/submit-approved.sh" >/dev/null 2>&1 || true
+check "a second caller exits while the lock is held" test "$(st lock-issue)" = approved
+exec 8>&-
+# Hold the checkout lock of the project, as a scout run does. Release it through the fifo.
+mkfifo "$t/release"
+flock "$STATE_ROOT/checkout-demo.lock" bash -c "touch '$t/held'; read -r _ <'$t/release'" &
+holder=$!
+for _ in $(seq 1 5000); do [[ -e $t/held ]] && break; done
+check "the test holds the checkout lock" test -e "$t/held"
+"$root/bin/submit-approved.sh" >/dev/null 2>&1 || true
+check "a PR stays approved while a scout of its project runs" test "$(st run-pr)" = approved
+check "an issue is sent while a scout runs" test "$(st lock-issue)" != approved
+check "no feedback goes to the scratchpad while a scout runs" test "$(fb)" = 0
+echo go >"$t/release"
+wait "$holder" || true
+"$root/bin/submit-approved.sh" >/dev/null 2>&1 || true
+check "a PR is sent when the scout run ends" test "$(st run-pr)" != approved
+check "the feedback goes to the scratchpad when the scout run ends" test "$(fb)" = 1
+"$root/bin/submit-approved.sh" >/dev/null 2>&1 || true
+check "the feedback goes to the scratchpad one time" test "$(fb)" = 1
+
 echo "== health and failure notices"
 hr() { bash -c "root='$root'; source '$root/bin/lib.sh'; health_record demo scout-a $1"; }
 check "a first failure sends no notice" test -z "$(hr 3)"

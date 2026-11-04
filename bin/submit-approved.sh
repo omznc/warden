@@ -12,6 +12,15 @@ shopt -s nullglob
 source "$root/bin/lib.sh"
 load_overrides
 
+# One caller at a time: the loop in run-all.sh and the pass call this script. Another caller exits at once.
+# The lock file is in the top of the state, where the agent cannot write.
+mkdir -p "$STATE_ROOT"
+old_umask=$(umask)
+umask 077
+exec 9>"$STATE_ROOT/submit.lock"
+umask "$old_umask"
+flock -n 9 || exit 0
+
 # gq: git with all output on stderr. Stdout of a submit function holds the URL and nothing else.
 gq() { gitc "$@" >&2; }
 
@@ -142,9 +151,17 @@ record_feedback() {
 	  def one: gsub("[\\r\\n]+"; " ");
 	  ((.reject_reason // "") | one | .[:300]) as $r
 	  | "- \($d) REJECTED \(.fingerprint) \"\((.title // "") | one | gsub("\""; "'"'"'") | .[:200])\": \(if ($r | gsub("\\s"; "")) == "" then "no reason" else $r end)"' "$meta") || return 0
+	# The scratchpad belongs to the agent. Write it only while no scout of the project runs, so the agent
+	# cannot swap the file for a symlink between the check and the write. A busy lock: a later round retries.
+	if ! checkout_lock "$proj" || ! flock -n "$CHECKOUT_FD"; then
+		checkout_unlock
+		return 0
+	fi
 	mkdir -p "$STATE_ROOT/$proj/$scout"
-	ensure_file "$STATE_ROOT/$proj/$scout/scratchpad.md" || return 0
-	printf '%s\n' "$line" >>"$STATE_ROOT/$proj/$scout/scratchpad.md" || return 0
+	ensure_file "$STATE_ROOT/$proj/$scout/scratchpad.md" && printf '%s\n' "$line" >>"$STATE_ROOT/$proj/$scout/scratchpad.md"
+	local rc=$?
+	checkout_unlock
+	((rc == 0)) || return 0
 	setmeta "$meta" '.feedback_recorded = true'
 	item_event "$meta" pending rejected
 }
@@ -205,10 +222,22 @@ for meta in "$STATE_ROOT"/*/pending/*/meta.json; do
 	approved)
 		title=$(jq -r '.title' "$meta")
 		kind=$(jq -r '.kind // "pr"' "$meta")
+		# A PR uses the checkout that a scout run uses. Take the lock of the project.
+		# When a run holds it, leave the item approved: a later round sends it.
+		# A bad project name takes no lock: submit_one refuses it.
+		if [[ $kind == pr || $kind == pr-update ]]; then
+			proj=$(jq -r '.project' "$meta")
+			if checkout_lock "$proj" && ! flock -n "$CHECKOUT_FD"; then
+				checkout_unlock
+				continue
+			fi
+		fi
 		# Mark the item before the write, so that a crash cannot cause a second write.
-		setmeta "$meta" '.status = "submitting"' || continue
+		setmeta "$meta" '.status = "submitting"' || { checkout_unlock; continue; }
 		out=$(submit_one "$meta")
 		rc=$?
+		# The git work is done. Release the checkout.
+		checkout_unlock
 		if ((rc == 0)) && github_url_ok "$out"; then
 			at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 			setmeta "$meta" --arg u "$out" --arg at "$at" '.status = "submitted" | .url = $u | .submitted_at = $at' || setmeta "$meta" --arg u "$out" --arg at "$at" '.status = "submitted" | .url = $u | .submitted_at = $at' || true

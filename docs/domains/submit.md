@@ -1,12 +1,32 @@
 # Submit
 
 `bin/submit-approved.sh` writes the approved items to GitHub. Only the runner has the GitHub token, so only the runner writes.
-`run-all.sh` starts the script in each loop chunk (about each minute) and after each scout run in a pass.
+`run-all.sh` starts the script in four places: a background loop (each 15 seconds), each loop chunk (about each minute), and after each scout run in a pass.
 Read `items.md` for the item statuses.
+
+## Lock
+
+The script takes a non-blocking lock (`flock -n`) on `$STATE_ROOT/submit.lock` at the start. A second caller exits at once with no work. Two callers then never send the same item.
+The lock file is in the top of the state, where the agent cannot write.
+
+## Background loop
+
+In loop mode, `run-all.sh` starts `submit_loop`. It calls the script each 15 seconds for the whole life of the loop. An error does not stop it. The `EXIT` trap of `run-all.sh` kills it.
+A scout run can last 30 minutes. The loop sends an approved item without a wait for the run. `ONCE=1` and the two-argument form start no loop.
+
+## Scout run and checkout
+
+`submit_pr` and `submit_pr_update` use `$WORK_ROOT/<project>`. `run-scout.sh` uses the same checkout while the agent runs.
+A lock protects the checkout: `$STATE_ROOT/checkout-<project>.lock` (helper `checkout_lock` in `lib.sh`, mode 600, top of the state).
+`run-scout.sh` takes it with a blocking `flock` before `agent_reclaim` and the checkout reset. It holds it to the end of the run, because the fd closes when the process ends.
+For each `pr` and `pr-update` item, `submit-approved.sh` takes the lock with `flock -n`. When a run holds it, the item stays `approved` and a later round sends it. The script releases the lock after the git work of the item.
+The lock fd is above fd 9, so it does not collide with the submit lock. `sudo` closes each fd above 2, so the agent does not hold the lock.
+A lock ends with its process, so a killed run leaves no stale lock.
+Issues and comments do not use the checkout. They go out at once.
 
 ## Order of work in one run
 
-1. Load `overrides.env` (`load_overrides`).
+1. Take the lock. Load `overrides.env` (`load_overrides`).
 2. Find each item in `submitting`. Set `error` and send a notice. Do not retry.
 3. `mark_stale`: set `stale` on each `pending` item older than `stale_days`. The jq program checks `status` again, so a decision of the UI is kept.
 4. For each `approved` item:

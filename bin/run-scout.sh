@@ -106,6 +106,10 @@ state=$STATE_ROOT/$proj/$scout
 ledger=$STATE_ROOT/$proj/ledger.json
 checkout=$WORK_ROOT/$proj
 mkdir -p "$state" "$WORK_ROOT"
+# Hold the lock of the checkout to the end of the run (the fd closes at exit). submit-approved.sh waits for it.
+# A wait is short: submit-approved.sh holds the lock for the git work of one PR only.
+checkout_lock "$proj" || die "cannot open the checkout lock"
+flock "$CHECKOUT_FD" || die "cannot take the checkout lock"
 # The agent can leave a directory with mode 700 in the state or in the checkout. Unlock the files of the agent first.
 agent_reclaim "$state" "$checkout" || die "cannot unlock the files of the agent"
 ensure_file "$state/scratchpad.md"

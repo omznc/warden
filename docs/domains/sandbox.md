@@ -57,6 +57,7 @@ The runner calls `agent-unlock.sh <dir>` as the user `agent`. The script gives t
 - `agent_reclaim <state> <checkout>`: open the directories again and run the unlock. Call it before the runner changes or removes anything in them.
 - `put_file <src> <dest>`: copy a file into a path that the agent can write. It removes the destination first, because the agent can leave a symlink or a directory there.
 - `ensure_file <file>`: make a regular file. It replaces a symlink or another entry.
+- These helpers are safe only while the agent does not run. `run-scout.sh` holds `checkout-<project>.lock` for the whole run. A different script (`submit-approved.sh`) writes in a scout directory or the checkout only while it holds that lock.
 - `strip_world_write`: remove the world-write bit below a directory.
 - `harden_dirs [--quick]`: set the modes of `/secrets`, `/inbox`, `/state` and `/work`, and close each idle checkout. `run-all.sh` runs the full walk once and the quick form in each loop.
 - `agent_sandbox_dir`: make `/run/warden/<run>/`. `run-scout.sh` removes it at the end of the run.

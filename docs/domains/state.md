@@ -14,6 +14,8 @@ For the item files, read `items.md`. For the inbox, read `secrets.md`.
 - `/state/cap-notified`: the UTC date of the last cost cap notice.
 - `/state/ui-session.json`: the session generation. Writer: the UI. See `app/CLAUDE.md`.
 - `/state/notify-test.json`: result of the test message. Writer: the runner.
+- `/state/submit.lock`: lock of `submit-approved.sh`. Only one caller works at a time. Empty file. Writer: `submit-approved.sh`.
+- `/state/checkout-<project>.lock`: lock of the shared checkout `/work/<project>`. `run-scout.sh` holds it for a whole run. `submit-approved.sh` holds it for the git work of one PR. Empty file, mode 600.
 - `/state/running/<project>__<scout>.json`: exists while a run is active. Writer: `run-scout.sh`. `run-all.sh` deletes the old files at start (`clean_running`). Fields: `id`, `project`, `scout`, `started`, `mode`.
 - `/state/requests/<project>__<scout>.json`: a run-now request. Writer: the UI. Field: `requested_at`. See "Requests".
 - `/state/requests/notify-test.json`: a test message request.

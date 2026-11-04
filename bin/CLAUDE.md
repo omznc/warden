@@ -23,12 +23,14 @@ Read `docs/domains/sandbox.md` before you change any trust boundary.
 
 ## Order of work
 
+`run-all.sh` loop starts a background `submit_loop` first. It calls `submit-approved.sh` each 15 seconds. `submit-approved.sh` takes a lock, so two callers never send the same item. For a `pr` or `pr-update` item it takes `checkout-<project>.lock` with `flock -n`. A scout run holds that lock from before `agent_reclaim` to its end. When the lock is busy, the item stays `approved`.
+
 `run-all.sh` loop, each chunk (about 60 seconds):
 
 1. `harden_dirs --quick`
-2. `inbox.sh`
-3. `discover.sh`
-4. `submit-approved.sh`
+2. `submit-approved.sh`
+3. `inbox.sh`
+4. `discover.sh`
 5. `tests_gc`
 6. `sync-github.sh` (at most each 10 minutes, stamp `last-sync`)
 7. `handle_requests` (run-now requests and the test message)
