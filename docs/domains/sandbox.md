@@ -32,6 +32,7 @@ The runner calls `agent-unlock.sh <dir>` as the user `agent`. The script gives t
 - The path must match `/state/<project>/<scout>` or `/work/<project>`, with optional sub-paths.
 - It changes only files that the user `agent` owns (`find -P -user`). It skips symlinks.
 - It changes the directories first, one at a time, because `find` must enter a directory before it reads it.
+- It skips `<dir>/.git`. The agent cannot write there. Git makes new directories in `.git` with mode 750 for the runner group, so the agent cannot enter them and `find` would fail the run.
 
 ## Modes and groups
 

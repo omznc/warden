@@ -11,6 +11,8 @@ r=$(realpath -e -- "$d") || exit 2
 [[ $r == "$d" ]] || exit 2
 [[ $r =~ ^/(state/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*|work/[A-Za-z0-9][A-Za-z0-9._-]*)(/.*)?$ ]] || exit 2
 me=$(id -un)
+# Skip the .git of a checkout. The agent cannot write it, and git makes new directories there
+# with mode 750 for the runner group. The agent cannot enter them, so find would fail.
 # First the directories, one at a time: find must be able to enter a directory before it reads the content.
-find -P "$r" -user "$me" -type d -exec chmod u+rwx,g+rwx {} \;
-find -P "$r" -user "$me" ! -type l -exec chmod u+rwX,g+rwX {} +
+find -P "$r" -path "$r/.git" -prune -o -user "$me" -type d -exec chmod u+rwx,g+rwx {} \;
+find -P "$r" -path "$r/.git" -prune -o -user "$me" ! -type l -exec chmod u+rwX,g+rwX {} +

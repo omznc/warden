@@ -112,6 +112,9 @@ refuse "no argument" ""
 if as_runner sudo -n -u agent /app/bin/agent-unlock.sh "$W/p" "$W/p/real" >/dev/null 2>&1; then bad "two arguments"; else ok "two arguments"; fi
 check "a refused path stays unchanged" test "$(stat -c %a "$t/outside")" = 700
 check "an allowed path works" unlock "$W/p"
+# git makes .git directories with mode 750 for the runner group. The agent cannot enter them.
+mkdir -p "$W/p/.git/objects/5f" && chown -R runner:runner "$W/p/.git" && chmod 750 "$W/p/.git/objects/5f"
+check "the unlock skips a .git that the agent cannot enter" unlock "$W/p"
 check "the runner cannot run another command as the agent" bash -c "! runuser -u runner -- sudo -n -u agent /bin/true"
 
 if ((fails == 0)); then echo "all passed"; else echo "$fails failed"; exit 1; fi
