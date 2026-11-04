@@ -13,6 +13,8 @@ For the item files, read `items.md`. For the inbox, read `secrets.md`.
 - `/state/last-sync`, `/state/last-weekly`: the epoch times of the last GitHub sync and the last weekly summary.
 - `/state/cap-notified`: the UTC date of the last cost cap notice.
 - `/state/ui-session.json`: the session generation. Writer: the UI. See `app/CLAUDE.md`.
+- `/state/ui-session-key.json` (mode 0600): the key that signs the session cookie. The UI makes it one time when `WARDEN_SESSION_SECRET` is not set. A restart keeps the sessions. The env value wins and the file stays unused. Writer: the UI.
+- `/state/ui-passkeys.json` (mode 0600): the passkeys of the UI login. Each entry holds `id`, `publicKey` (base64url), `counter`, `transports`, `name` and `created`. Writer: the UI. The runner never reads it.
 - `/state/notify-test.json`: result of the test message. Writer: the runner.
 - `/state/submit.lock`: lock of `submit-approved.sh`. Only one caller works at a time. Empty file. Writer: `submit-approved.sh`.
 - `/state/checkout-<project>.lock`: lock of the shared checkout `/work/<project>`. `run-scout.sh` holds it for a whole run. `submit-approved.sh` holds it for the git work of one PR. Empty file, mode 600.

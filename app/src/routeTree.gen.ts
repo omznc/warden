@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as PasskeyOptionsRouteImport } from './routes/passkey-options'
+import { Route as PasskeyVerifyRouteImport } from './routes/passkey-verify'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppFindingsRouteImport } from './routes/_app/findings'
 import { Route as AppSettingsRouteRouteImport } from './routes/_app/settings/route'
@@ -41,6 +43,16 @@ const LoginRoute = LoginRouteImport.update({
 const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasskeyOptionsRoute = PasskeyOptionsRouteImport.update({
+  id: '/passkey-options',
+  path: '/passkey-options',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasskeyVerifyRoute = PasskeyVerifyRouteImport.update({
+  id: '/passkey-verify',
+  path: '/passkey-verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -130,6 +142,8 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/passkey-options': typeof PasskeyOptionsRoute
+  '/passkey-verify': typeof PasskeyVerifyRoute
   '/settings': typeof AppSettingsRouteRouteWithChildren
   '/findings': typeof AppFindingsRoute
   '/projects/new': typeof AppProjectsNewRoute
@@ -149,6 +163,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/passkey-options': typeof PasskeyOptionsRoute
+  '/passkey-verify': typeof PasskeyVerifyRoute
   '/findings': typeof AppFindingsRoute
   '/': typeof AppIndexRoute
   '/projects/new': typeof AppProjectsNewRoute
@@ -170,6 +186,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/passkey-options': typeof PasskeyOptionsRoute
+  '/passkey-verify': typeof PasskeyVerifyRoute
   '/_app/settings': typeof AppSettingsRouteRouteWithChildren
   '/_app/findings': typeof AppFindingsRoute
   '/_app/': typeof AppIndexRoute
@@ -193,6 +211,8 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/logout'
+    | '/passkey-options'
+    | '/passkey-verify'
     | '/settings'
     | '/findings'
     | '/projects/new'
@@ -212,6 +232,8 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/logout'
+    | '/passkey-options'
+    | '/passkey-verify'
     | '/findings'
     | '/'
     | '/projects/new'
@@ -232,6 +254,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/logout'
+    | '/passkey-options'
+    | '/passkey-verify'
     | '/_app/settings'
     | '/_app/findings'
     | '/_app/'
@@ -254,6 +278,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
+  PasskeyOptionsRoute: typeof PasskeyOptionsRoute
+  PasskeyVerifyRoute: typeof PasskeyVerifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -277,6 +303,20 @@ declare module '@tanstack/react-router' {
       path: '/logout'
       fullPath: '/logout'
       preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passkey-options': {
+      id: '/passkey-options'
+      path: '/passkey-options'
+      fullPath: '/passkey-options'
+      preLoaderRoute: typeof PasskeyOptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passkey-verify': {
+      id: '/passkey-verify'
+      path: '/passkey-verify'
+      fullPath: '/passkey-verify'
+      preLoaderRoute: typeof PasskeyVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/': {
@@ -447,6 +487,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
+  PasskeyOptionsRoute: PasskeyOptionsRoute,
+  PasskeyVerifyRoute: PasskeyVerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

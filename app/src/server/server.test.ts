@@ -7,7 +7,8 @@ import { Markdown } from "@/components/markdown";
 import type { Env } from "./env";
 import { checkRequest, requireSession } from "./guard";
 import { stateDir } from "./paths";
-import { COOKIE, createSession, SESSION_DAYS, verifySession } from "./session";
+import { COOKIE, createSession, SESSION_DAYS, sessionCookie, sessionKey, verifySession } from "./session";
+import { CHALLENGE_TTL_MS, deletePasskey, issueChallenge, passkeyLogin, passkeyRows, readPasskeys, registerPasskey, registrationOptions, relyingParty, takeChallenge, updateCounter } from "./passkeys";
 import { ACTION_LABELS, actionGroup } from "@/lib/format";
 import { isSecretKey, pickKeyEnv, secretValueError } from "@/lib/secrets";
 import { buildProject, createProject, removeProject } from "./connections";
@@ -41,6 +42,7 @@ const env: Env = {
 	user: "admin",
 	password: "pw",
 	sessionSecret: "",
+	wardenUrl: "",
 	mode: "dry",
 };
 
@@ -442,6 +444,75 @@ describe("session generation", () => {
 	test("without WARDEN_SESSION_SECRET a cookie signed with sha256(password) fails", () => {
 		const forged = createSession({ ...env, sessionSecret: createHash("sha256").update("warden-session:pw").digest("hex") });
 		expect(verifySession(forged, env)).toBe(false);
+	});
+});
+
+describe("session key", () => {
+	test("without WARDEN_SESSION_SECRET the key is made once and kept (mode 0600)", () => {
+		const first = sessionKey(env);
+		expect(first).toHaveLength(64);
+		expect(sessionKey(env)).toBe(first);
+		expect(statSync(join(env.stateRoot, "ui-session-key.json")).mode & 0o777).toBe(0o600);
+		const token = createSession(env);
+		expect(verifySession(token, env)).toBe(true);
+	});
+
+	test("the env secret wins and writes no file", () => {
+		expect(sessionKey({ ...env, sessionSecret: "from-env" })).toBe("from-env");
+		expect(existsSync(join(env.stateRoot, "ui-session-key.json"))).toBe(false);
+	});
+
+	test("the cookie is SameSite=Lax", () => {
+		expect(sessionCookie("v", req("GET"))).toContain("SameSite=Lax");
+	});
+});
+
+describe("passkeys", () => {
+	const stored = { id: "cred1", publicKey: "AQID", counter: 3, transports: ["internal"], name: "Laptop", created: "2026-11-04T10:00:00.000Z" };
+	const file = () => join(env.stateRoot, "ui-passkeys.json");
+
+	test("the store reads, writes with mode 0600 and updates the counter", () => {
+		expect(readPasskeys(env)).toEqual([]);
+		writeFileSync(file(), JSON.stringify({ credentials: [stored, { id: 5 }] }));
+		expect(readPasskeys(env)).toEqual([stored]);
+		updateCounter(env, "cred1", 9);
+		expect(readPasskeys(env)[0].counter).toBe(9);
+		expect(statSync(file()).mode & 0o777).toBe(0o600);
+		expect(passkeyRows(env)).toEqual([{ id: "cred1", name: "Laptop", created: stored.created }]);
+	});
+
+	test("the RP ID comes from WARDEN_URL only", () => {
+		expect(relyingParty({ ...env, wardenUrl: "https://warden.example.com/x" })).toEqual({ rpID: "warden.example.com", origin: "https://warden.example.com" });
+		expect(relyingParty({ ...env, wardenUrl: "" })?.rpID).toBe("localhost");
+		expect(relyingParty({ ...env, wardenUrl: "http://warden.example.com" })).toBeNull();
+		expect(relyingParty({ ...env, wardenUrl: "https://127.0.0.1" })).toBeNull();
+		expect(relyingParty({ ...env, wardenUrl: "not a url" })).toBeNull();
+	});
+
+	test("a challenge works once and expires after 5 minutes", () => {
+		const t = Date.now();
+		issueChallenge("login", "c1", t);
+		expect(takeChallenge("login", "c1", t + 1000)).toBe(true);
+		expect(takeChallenge("login", "c1", t + 1000)).toBe(false);
+		issueChallenge("login", "c2", t);
+		expect(takeChallenge("login", "c2", t + CHALLENGE_TTL_MS + 1)).toBe(false);
+		issueChallenge("register", "c3", t);
+		expect(takeChallenge("login", "c3", t)).toBe(false);
+		expect(takeChallenge("register", "c3", t)).toBe(false);
+	});
+
+	test("register and delete refuse a wrong password and change nothing", async () => {
+		writeFileSync(file(), JSON.stringify({ credentials: [stored] }));
+		await expect(registrationOptions("bad", env, 0)).rejects.toThrow("Wrong password.");
+		await expect(registerPasskey({ password: "bad", name: "x", response: { id: "n" } as never }, env, 0)).rejects.toThrow("Wrong password.");
+		await expect(deletePasskey({ password: "bad", id: "cred1" }, env, 0)).rejects.toThrow("Wrong password.");
+		expect(readPasskeys(env)).toHaveLength(1);
+		expect(await deletePasskey({ password: "pw", id: "cred1" }, env, 0)).toEqual([]);
+	});
+
+	test("a login with an unknown credential fails and counts as a failure", async () => {
+		for (let i = 0; i < 5; i++) expect(await passkeyLogin({ id: "none" } as never, env, 0)).toBe(false);
+		await expect(passkeyLogin({ id: "none" } as never, env, 0)).rejects.toThrow("Too many failed attempts");
 	});
 });
 

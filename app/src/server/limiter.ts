@@ -29,9 +29,9 @@ function recordFailure(now: number): void {
 }
 
 // Run a password check. Refuse while locked. A failure waits delayMs, then counts.
-export async function guardedCheck(check: () => boolean, delayMs = 1000, now = Date.now()): Promise<boolean> {
+export async function guardedCheck(check: () => boolean | Promise<boolean>, delayMs = 1000, now = Date.now()): Promise<boolean> {
 	if (now < lockedUntil) throw new LockedError(Math.ceil((lockedUntil - now) / 60_000));
-	if (check()) return true;
+	if (await check()) return true;
 	recordFailure(now);
 	await new Promise((r) => setTimeout(r, delayMs));
 	return false;

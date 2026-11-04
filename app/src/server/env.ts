@@ -8,6 +8,7 @@ export type Env = {
 	user: string;
 	password: string;
 	sessionSecret: string;
+	wardenUrl: string;
 	mode: "dry" | "issues" | "prs";
 };
 
@@ -24,6 +25,7 @@ export function env(): Env {
 		user: process.env.WARDEN_USER || "admin",
 		password: process.env.WARDEN_PASSWORD ?? "",
 		sessionSecret: process.env.WARDEN_SESSION_SECRET ?? "",
+		wardenUrl: process.env.WARDEN_URL ?? "",
 		mode: mode === "issues" || mode === "prs" ? mode : "dry",
 	};
 }

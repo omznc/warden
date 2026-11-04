@@ -24,7 +24,14 @@ Commands are in the root `CLAUDE.md`. Use `bun`, not `npm`.
 
 - `src/start.ts` registers `requestGuard` (every request) and `authMiddleware` (every server function). A server function is a public endpoint, so it needs a session. Do not bypass the middleware.
 - `requestGuard`: `/health` answers 200. With no `WARDEN_PASSWORD` every other route answers 503. A POST needs an `Origin` or `Referer` host equal to `Host`. It sets a CSP with a nonce, `nosniff`, `same-origin` referrer and `no-store`.
-- The session is a signed cookie (`warden_session`, 30 days, HttpOnly, SameSite Strict, Secure on https). The key is `WARDEN_SESSION_SECRET`, or a random key per process when it is not set.
+- The session is a signed cookie (`warden_session`, 30 days, HttpOnly, SameSite Lax, Secure on https). Lax keeps the session when a person follows a link from a notice. This is safe because each non-GET request needs a same Origin (`guard.ts`).
+- The key is `WARDEN_SESSION_SECRET`. When it is not set, the UI makes a random key one time and keeps it in `/state/ui-session-key.json` (mode 0600), so a restart does not end the sessions.
+- Passkeys (WebAuthn, `@simplewebauthn/server` and `@simplewebauthn/browser`) are a second way to sign in. The code is in `passkeys.ts`. The credentials are in `/state/ui-passkeys.json` (mode 0600).
+- The RP ID and the expected origin come from `WARDEN_URL` (`env().wardenUrl`) only. Never use `Host` or `x-forwarded-*`. Without `WARDEN_URL`, only `http://localhost:<port>` is valid. If neither is valid, the passkey API answers 503 and the UI hides the controls.
+- Challenges are in memory, single use, and live 5 minutes.
+- To add or delete a passkey, a person needs a session and the password (`checkPassword`). The server functions in `fns.ts` do this.
+- Only two routes work without a session: `/passkey-options` and `/passkey-verify`. Both are POST, so the Origin check applies. The verify route uses `guardedCheck` (the same limiter as the password) and sets the same cookie with `createSession`. "Sign out everywhere" also ends passkey sessions.
+- The CSP needs no change for WebAuthn: `connect-src 'self'` covers the two fetch calls.
 - "Sign out everywhere" raises the generation in `/state/ui-session.json`. Every older cookie stops working.
 - Ask for the password again (`checkPassword` in `limiter.ts`) for these changes: a secret, the Hermes URL or the Warden URL, the test message, a Coolify instance, and "sign out everywhere". Five failures in 10 minutes lock all checks for 10 minutes. A failure waits one second.
 - Error texts of these functions are fixed. They never hold the password or the value.

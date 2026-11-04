@@ -6,6 +6,7 @@ import { env } from "./env";
 import { integrationsView, requestNotifyTest, setUrl } from "./integrations";
 import { signOutEverywhere } from "./limiter";
 import { NAME } from "./paths";
+import { deletePasskey, passkeyRows, registerPasskey, registrationOptions, relyingParty } from "./passkeys";
 import { saveSecret, secretRows } from "./secrets";
 import { costView, decide, editItem, itemDetail, listItems, rejectDays, setCostCap, setRejectDays, setStaleDays, staleDays, startRun, updateProject } from "./store";
 import { findingsView, overviewView, projectView, runsView, runView, shellView } from "./views";
@@ -55,6 +56,21 @@ export const saveStale = createServerFn({ method: "POST" })
 export const signOutEverywhereFn = createServerFn({ method: "POST" })
 	.validator(z.object({ password: z.string().max(500) }))
 	.handler(async ({ data }) => signOutEverywhere(data.password, env()));
+
+export const getPasskeys = createServerFn().handler(async () => ({ available: relyingParty(env()) !== null, passkeys: passkeyRows(env()) }));
+
+export const passkeyOptionsFn = createServerFn({ method: "POST" })
+	.validator(z.object({ password: z.string().max(500) }))
+	// The options are plain JSON, but the library type holds BufferSource, which the serializer refuses. So send a string.
+	.handler(async ({ data }) => JSON.stringify(await registrationOptions(data.password, env())));
+
+export const passkeyAddFn = createServerFn({ method: "POST" })
+	.validator(z.object({ password: z.string().max(500), name: z.string().max(60), response: z.object({ id: z.string().max(1024) }).passthrough() }))
+	.handler(async ({ data }) => registerPasskey({ ...data, response: data.response as never }, env()));
+
+export const passkeyDeleteFn = createServerFn({ method: "POST" })
+	.validator(z.object({ password: z.string().max(500), id: z.string().max(1024) }))
+	.handler(async ({ data }) => deletePasskey(data, env()));
 
 export const getRejectDays = createServerFn().handler(async () => ({ days: rejectDays() }));
 

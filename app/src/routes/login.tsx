@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { Logo } from "@/components/logo";
+import { PasskeyLogin } from "@/components/passkey-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,7 @@ function LoginPage() {
 	const lock = /^locked(\d{1,3})$/.exec(error ?? "");
 	return (
 		<main className="mx-auto flex min-h-screen max-w-sm items-center px-4">
-			<form method="post" action="/login" className="w-full space-y-4 rounded-xl border bg-card p-6">
+			<form method="post" action="/login" className="flex w-full flex-col gap-4 rounded-xl border bg-card p-6">
 				<div>
 					<h1 className="mb-3">
 						<Logo className="h-7" />
@@ -50,7 +51,7 @@ function LoginPage() {
 				<input type="hidden" name="redirect" value={safeRedirect(redirect)} />
 				<div className="space-y-1.5">
 					<Label htmlFor="user">User</Label>
-					<Input id="user" name="user" autoComplete="username" defaultValue="" required />
+					<Input id="user" name="user" autoComplete="username webauthn" spellCheck={false} defaultValue="" required />
 				</div>
 				<div className="space-y-1.5">
 					<Label htmlFor="password">Password</Label>
@@ -64,6 +65,7 @@ function LoginPage() {
 				<Button type="submit" className="h-9 w-full">
 					Sign in
 				</Button>
+				<PasskeyLogin redirect={redirect} />
 			</form>
 		</main>
 	);

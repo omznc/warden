@@ -28,6 +28,8 @@ Warden runs as three containers from `compose.yaml`. Use `podman compose` (or `d
 
 - Do not mount `secrets` in the UI or the tester.
 - The UI gets only these variables from `.env`: `WARDEN_USER`, `WARDEN_PASSWORD`, `WARDEN_SESSION_SECRET`, `MODE`, `INTERVAL_HOURS`, `MAX_TURNS`, `HERMES_WEBHOOK_URL`, `WARDEN_URL`. It never gets a token.
+- Passkeys need `WARDEN_URL` in `.env` with an `https` address, for example `https://warden.example.com`. The UI takes the passkey RP ID and origin from this value only, not from a request header. The "Warden URL" setting in the UI does not change them. Without `WARDEN_URL`, only `http://localhost:8650` works. If the address is not valid, the passkey controls stay hidden.
+- Set `WARDEN_SESSION_SECRET`, or keep the `state` volume. Without the secret, the UI keeps a session key in `/state/ui-session-key.json`.
 - The runner reads the whole `.env` (`env_file`).
 - `/work` and `/state` can come from an older image. `harden_dirs` fixes the modes at the start.
 

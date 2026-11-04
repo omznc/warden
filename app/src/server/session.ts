@@ -5,16 +5,16 @@ import { readJson, writeJsonAtomic } from "./fsio";
 export const COOKIE = "warden_session";
 export const SESSION_DAYS = 30;
 
-// Without a secret the key is random per process, so sessions end on restart.
-let ephemeralKey: string | null = null;
+const keyPath = (e: Env) => `${e.stateRoot}/ui-session-key.json`;
 
-function key(e: Env): string {
+// The env value wins. Without it the key is made one time and kept in the state, so a restart keeps the sessions.
+export function sessionKey(e: Env): string {
 	if (e.sessionSecret) return e.sessionSecret;
-	if (!ephemeralKey) {
-		ephemeralKey = randomBytes(32).toString("hex");
-		console.warn("WARDEN_SESSION_SECRET is not set. Sessions end when the UI restarts.");
-	}
-	return ephemeralKey;
+	const saved = readJson<{ key?: unknown }>(keyPath(e), {}).key;
+	if (typeof saved === "string" && saved.length >= 32) return saved;
+	const key = randomBytes(32).toString("hex");
+	writeJsonAtomic(keyPath(e), { key }, 0o600);
+	return key;
 }
 
 const generationPath = (e: Env) => `${e.stateRoot}/ui-session.json`;
@@ -32,7 +32,7 @@ export function rotateGeneration(e: Env): number {
 }
 
 function mac(payload: string, e: Env): string {
-	return createHmac("sha256", key(e)).update(payload).digest("base64url");
+	return createHmac("sha256", sessionKey(e)).update(payload).digest("base64url");
 }
 
 export function createSession(e: Env, now = Date.now()): string {
@@ -86,8 +86,9 @@ export function isHttps(req: Request): boolean {
 	return req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https" || new URL(req.url).protocol === "https:";
 }
 
+// Lax, not Strict: a link from a notice must keep the session. Each non-GET request needs a same Origin (guard.ts).
 export function sessionCookie(value: string, req: Request, maxAge = SESSION_DAYS * 86_400): string {
-	return `${COOKIE}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${isHttps(req) ? "; Secure" : ""}`;
+	return `${COOKIE}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${isHttps(req) ? "; Secure" : ""}`;
 }
 
 export function hasSession(req: Request, e: Env): boolean {
