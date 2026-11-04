@@ -43,7 +43,7 @@ function RejectDialog({ item, open, onOpenChange, onReject }: { item: ItemDetail
 				</div>
 				<AlertDialogFooter>
 					<AlertDialogCancel ref={cancel}>Cancel</AlertDialogCancel>
-					<Button variant="destructive" className="bg-destructive text-background hover:bg-destructive/90" onClick={() => onReject(reason)}>
+					<Button variant="destructive" className="bg-destructive text-background hover:bg-destructive/90 dark:bg-destructive dark:hover:bg-destructive/90" onClick={() => onReject(reason)}>
 						Reject {SHORT[item.kind]}
 					</Button>
 				</AlertDialogFooter>
