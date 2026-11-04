@@ -24,7 +24,7 @@ Read `submit.md` for the write. The code for this page is in `bin/run-scout.sh` 
 
 `<project>/pending/<id>/` holds `meta.json`, and for a PR also `bundle` and `patch.diff`.
 
-- `meta.json` fields: `kind`, `fingerprint`, `project`, `scout`, `title`, `body`, `number`, `severity`, `created`, `status`, `url`. A `pr` item also has `base_sha` and `related_issue`. A `pr-update` item has `number` (the PR) and `base_sha` (the head of the PR at run time).
+- `meta.json` fields: `kind`, `fingerprint`, `project`, `scout`, `title`, `body`, `number`, `severity`, `created`, `status`, `url`, `model` (the model of the run that made the item, for example `opus`; an old item has none). A `pr` item also has `base_sha` and `related_issue`. A `pr-update` item has `number` (the PR) and `base_sha` (the head of the PR at run time).
 - The runner writes `meta.json` last, by an atomic rename. A reader never sees a partial item.
 - For `issue` and `comment`, `body` has no footer. The field `footer` holds the text that the submit step appends. The submit step does not append it when the body holds the marker already.
 - Footer for a scout finding: `Found by the <scout> scout.` and the marker `<!-- warden:fp=<key> -->`. The scouts `github-issues` and `warden-ci` write `Triage by Warden (automated).` and the key `<scout>-<number>`.

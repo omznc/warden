@@ -149,6 +149,8 @@ agent_allowed='Read,Edit,Write,Glob,Grep,mcp__posthog__*,Bash(git status:*),Bash
 agent_denied='Bash(git push:*),Bash(gh:*),Bash(curl:*),Bash(wget:*),WebFetch,WebSearch,Bash(git * --no-index*),Bash(git * --output*),Bash(git * --ext-diff*),Bash(git * --textconv*)'
 
 # agent_build <prompt> <system-file> <mcp-file> <settings-file> <max-turns> [extra claude args...]
+# The runner shell variables AGENT_MODEL and AGENT_EFFORT (from agent_model) set --model and --effort.
+# They are not exported and not in the agent environment.
 # Sets the array agent_cmd. The agent gets a clean environment: no secret except its own model credentials.
 # Export STATE_DIR before the call. With isolation, sudo passes the variables by name (--preserve-env), so no
 # secret is in the argument list, which every process can read in /proc.
@@ -158,8 +160,9 @@ agent_build() {
 	local -a claude_args=(-p "$prompt"
 		--append-system-prompt "$(cat "$sys")"
 		--mcp-config "$mcp" --strict-mcp-config --settings "$settings"
-		--output-format json --max-turns "$turns" --model "${CLAUDE_MODEL:-sonnet}"
+		--output-format json --max-turns "$turns" --model "${AGENT_MODEL:-${CLAUDE_MODEL:-sonnet}}"
 		--permission-mode acceptEdits --allowedTools "$agent_allowed" --disallowedTools "$agent_denied" "$@")
+	[[ -z ${AGENT_EFFORT:-} ]] || claude_args+=(--effort "$AGENT_EFFORT")
 	if agent_isolated; then
 		for v in STATE_DIR CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY; do
 			keep+=,$v
@@ -254,6 +257,27 @@ project_mode() {
 	dry | issues | prs) printf '%s' "$m" ;;
 	*) printf '%s' "$2" ;;
 	esac
+}
+
+# agent_model <project> <scout>: print "<model> <effort>" for a run. The effort is empty for a normal run.
+# A run that can fix code (project mode prs, scout in settings.json fix_runs.scouts) gets fix_runs.model and
+# fix_runs.effort. Any other run gets CLAUDE_MODEL (default sonnet). An invalid field gives its default.
+# Keep the defaults in step with app/src/lib/settings.ts.
+agent_model() {
+	local mode out base=${CLAUDE_MODEL:-sonnet}
+	mode=$(project_mode "$1" "${MODE:-dry}")
+	if [[ $mode == prs ]]; then
+		out=$({ cat "${STATE_ROOT:-/tmp/warden-state}/settings.json" 2>/dev/null || true; } | jq -Rrs --arg s "$2" '
+		  (fromjson? // {}) | (if type == "object" then .fix_runs else null end) as $f
+		  | (if ($f | type) == "object" then $f else {} end) as $f
+		  | ["instrumentation-gaps", "warden-ci", "signals-scout-error-tracking"] as $d
+		  | ($f.model | if IN("opus", "sonnet", "haiku") then . else "opus" end) as $m
+		  | ($f.effort | if IN("low", "medium", "high", "xhigh", "max") then . else "medium" end) as $e
+		  | ($f.scouts | if type == "array" and all(.[]; type == "string" and test("^[a-z0-9][a-z0-9-]*$")) then . else $d end) as $l
+		  | if any($l[]; . == $s) then "\($m) \($e)" else empty end' 2>/dev/null || true)
+		[[ -z $out ]] || { printf '%s' "$out"; return 0; }
+	fi
+	printf '%s ' "$base"
 }
 
 # stale_days: days after which a pending item turns stale. settings.json stale_days, default 30.

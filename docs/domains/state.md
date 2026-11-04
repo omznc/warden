@@ -29,8 +29,9 @@ For the item files, read `items.md`. For the inbox, read `secrets.md`.
 
 ## runs.jsonl
 
-Fields: `id` (`<yyyymmddTHHMMSSZ>-<project>-<scout>`), `started`, `ended`, `project`, `scout`, `mode`, `status`, `error`, `summary`, `turns`, `cost_usd`, `findings`.
+Fields: `id` (`<yyyymmddTHHMMSSZ>-<project>-<scout>`), `started`, `ended`, `project`, `scout`, `mode`, `model`, `effort`, `status`, `error`, `summary`, `turns`, `cost_usd`, `findings`.
 
+- `model` and `effort` are the values of the run. `effort` is `null` for a normal run. A run that is `skipped` before the agent starts has both as `null`. An old record has neither.
 - `status` is `ok`, `error` or `skipped`. A `skipped` run has no cost. Its `error` holds the reason, for example "daily cost cap reached".
 - Each entry of `findings` has `fingerprint`, `action`, `severity`, `title`, `number`, `url`.
 - Actions: `issue`, `comment`, `pr`, `pr-update`, `pending`, `pending-<kind>`, `dry-issue`, `dry-comment`, `dry-pr`, `dry-pr-update`, `skipped-dup`, `skipped-cap`, `skipped-mode`, `blocked-secret`, `blocked-path`, `blocked-conflict`, `pr-update-failed`.
@@ -42,6 +43,7 @@ Writer: the UI (read, change, atomic write in `mergeSettings`). The runner reads
 
 - `daily_cost_cap_usd`: a number, or no key for no cap. When the cost of the runs of today (UTC) reaches it, each new run is `skipped` and `claude` does not start. The runner sends one notice each day.
 - `stale_days` (default 30), `reject_days` (default 30).
+- `fix_runs`: `{model, effort, scouts}`. Default: `{"model": "opus", "effort": "medium", "scouts": ["instrumentation-gaps", "warden-ci", "signals-scout-error-tracking"]}`. `model` is `opus`, `sonnet` or `haiku`. `effort` is `low`, `medium`, `high`, `xhigh` or `max`. Each `scouts` entry matches `^[a-z0-9][a-z0-9-]*$`. A missing or invalid field gives its default. A run uses the model and the effort only when the project mode is `prs` and the scout is in `scouts`. Other runs use `CLAUDE_MODEL`, with no `--effort`. The runner reads it in `agent_model` (`lib.sh`). The UI writes it on the Claude integration page.
 - `hermes_webhook_url`, `warden_url`.
 - `coolify`: `[{name, url}]`. See `coolify.md`.
 - `projects.<name>.mode` (`dry`, `issues`, `prs`) and `projects.<name>.auto_submit`.

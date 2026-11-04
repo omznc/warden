@@ -18,7 +18,7 @@ import { notifyResultText, TEST_WAIT_MS, urlError } from "@/lib/settings";
 import { guardedCheck, resetLimiter, signOutEverywhere } from "./limiter";
 import { ConflictError, rejectDays, setRejectDays, writeMetaChecked } from "./store";
 import { createHash } from "node:crypto";
-import { decide, editItem, itemCreatedMs, itemDetail, scoutHealth, setStaleDays, listItems, loadProjects, projectSettings, readTestResult, startRun, updateProject } from "./store";
+import { decide, editItem, fixRuns, fixRunsView, setFixRuns, itemCreatedMs, itemDetail, scoutHealth, setStaleDays, listItems, loadProjects, projectSettings, readTestResult, startRun, updateProject } from "./store";
 import { findingsView, overviewView, projectView, runView } from "./views";
 import { findingState, ghLabel, parseGh } from "@/lib/gh";
 import { TestsCard } from "@/components/tests-card";
@@ -136,6 +136,25 @@ describe("decisions", () => {
 		expect(itemCreatedMs("/nonexistent", "x-20261103090000", undefined)).toBe(Date.UTC(2026, 10, 3, 9, 0, 0));
 		expect(setStaleDays(7, env)).toBe(7);
 		expect(() => setStaleDays(0, env)).toThrow();
+	});
+
+	test("fix_runs: defaults, fallbacks for invalid fields, and a write that keeps other keys", () => {
+		const file = join(env.stateRoot, "settings.json");
+		rmSync(file, { force: true });
+		const defaults: ReturnType<typeof fixRuns> = { model: "opus", effort: "medium", scouts: ["instrumentation-gaps", "warden-ci", "signals-scout-error-tracking"] };
+		expect(fixRuns(env)).toEqual(defaults);
+		writeFileSync(file, JSON.stringify({ fix_runs: { model: "gpt", effort: "medium", scouts: ["../x"] } }));
+		expect(fixRuns(env)).toEqual(defaults);
+		writeFileSync(file, JSON.stringify({ fix_runs: "x" }));
+		expect(fixRuns(env)).toEqual(defaults);
+		writeFileSync(file, JSON.stringify({ stale_days: 9, fix_runs: { model: "haiku", effort: "max", scouts: ["warden-ci"] } }));
+		expect(fixRuns(env)).toEqual({ model: "haiku", effort: "max", scouts: ["warden-ci"] });
+		expect(() => setFixRuns({ model: "bogus" as never, effort: "low", scouts: [] }, env)).toThrow();
+		expect(() => setFixRuns({ model: "opus", effort: "low", scouts: ["Bad Name"] }, env)).toThrow();
+		expect(setFixRuns({ model: "sonnet", effort: "high", scouts: ["coolify", "coolify"] }, env)).toEqual({ model: "sonnet", effort: "high", scouts: ["coolify"] });
+		expect(JSON.parse(readFileSync(file, "utf8")).stale_days).toBe(9);
+		expect(fixRunsView(env).available).toContain("warden-ci");
+		rmSync(file, { force: true });
 	});
 
 	test("the health file gives failures and the last good run; wrong values count as missing", () => {

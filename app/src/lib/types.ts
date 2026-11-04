@@ -42,6 +42,8 @@ export type Run = {
 	project: string;
 	scout: string;
 	mode?: string;
+	model?: string | null;
+	effort?: string | null;
 	status: RunStatus;
 	error?: string | null;
 	summary?: string | null;
@@ -58,6 +60,7 @@ export type ItemMeta = {
 	title: string;
 	body: string;
 	footer?: string | null;
+	model?: string;
 	edited_at?: string | null;
 	feedback_recorded?: boolean;
 	number?: number | null;

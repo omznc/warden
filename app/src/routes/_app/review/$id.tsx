@@ -80,7 +80,7 @@ function Description({ item, onEdit }: { item: ItemDetail; onEdit: () => void })
 			<Footer footer={item.footer} />
 			<p className="flex items-center gap-2 border-t bg-muted px-4 py-2.5 text-xs text-muted-foreground">
 				<Lock aria-hidden className="size-3.5 shrink-0" />
-				Written by the agent. Shown as safe markdown, no raw HTML.
+				Written by {item.model ?? "the agent"}.
 			</p>
 		</div>
 	);
@@ -141,7 +141,7 @@ function Header({ item, narrow, locked }: { item: ItemDetail; narrow: boolean; l
 					<h1 className="text-xl font-semibold leading-7 max-[639px]:text-lg">{item.title}</h1>
 					<MetaRow item={item} />
 				</div>
-				{narrow ? null : <ActionBar item={item} locked={locked} className="flex items-center gap-6" />}
+				{narrow ? null : <ActionBar item={item} locked={locked} className="flex items-center gap-2" />}
 			</div>
 		</div>
 	);

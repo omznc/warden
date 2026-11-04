@@ -3,20 +3,21 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { CoolifyPanel } from "@/components/coolify-panel";
+import { FixRunsCard } from "@/components/fix-runs-card";
 import { HermesTest } from "@/components/hermes-test";
 import { AddKey, SecretItem } from "@/components/secret-editor";
 import { PageHead, UrlForm } from "@/components/settings-forms";
 import { Stale } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { type Integration, integrationById } from "@/lib/integrations";
-import { integrationsQuery, secretsQuery } from "@/lib/queries";
+import { fixRunsQuery, integrationsQuery, secretsQuery } from "@/lib/queries";
 import { isPosthogKey } from "@/lib/secrets";
 
 export const Route = createFileRoute("/_app/settings/integrations/$id")({
 	validateSearch: z.object({ add: z.boolean().optional().catch(undefined) }),
 	loader: ({ context, params }) => {
 		if (!integrationById(params.id)) throw notFound();
-		return Promise.all([context.queryClient.ensureQueryData(secretsQuery()), context.queryClient.ensureQueryData(integrationsQuery())]);
+		return Promise.all([context.queryClient.ensureQueryData(secretsQuery()), context.queryClient.ensureQueryData(integrationsQuery()), params.id === "claude" ? context.queryClient.ensureQueryData(fixRunsQuery()) : null]);
 	},
 	component: IntegrationPage,
 	notFoundComponent: () => (
@@ -94,6 +95,7 @@ function IntegrationPage() {
 			{NOTES[integration.id] ? <p className="text-xs text-muted-foreground">{NOTES[integration.id]}</p> : null}
 			{integration.id === "coolify" ? <CoolifyPanel /> : <Keys integration={integration} />}
 			{integration.id === "hermes" ? <HermesTest /> : null}
+			{integration.id === "claude" ? <FixRunsCard /> : null}
 			<p className="text-xs text-muted-foreground">Warden never shows a saved secret. A change needs your Warden password.</p>
 		</>
 	);

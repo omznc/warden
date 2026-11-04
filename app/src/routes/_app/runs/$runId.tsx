@@ -44,7 +44,7 @@ function Facts({ run, maxTurns }: { run: Run; maxTurns: number }) {
 			<Fact label="Started" sub={<span className="tabular" suppressHydrationWarning>{clock(run.started)}</span>}><Time iso={run.started} /></Fact>
 			<Fact label="Ended" sub={run.ended ? <span className="tabular" suppressHydrationWarning>{clock(run.ended)}</span> : null}>{run.ended ? <Time iso={run.ended} /> : "-"}</Fact>
 			<Fact label="Duration"><span className="tabular">{dur}</span></Fact>
-			<Fact label="Mode">{run.mode ?? "-"}</Fact>
+			<Fact label="Mode" sub={typeof run.model === "string" ? `${run.model.slice(0, 40)}${typeof run.effort === "string" ? ` / ${run.effort.slice(0, 20)}` : ""}` : null}>{run.mode ?? "-"}</Fact>
 			<Fact label="Turns" sub={<Progress value={Math.min(100, ((run.turns ?? 0) / maxTurns) * 100)} aria-label="Turns used" className="mt-1" />}><span className="tabular">{run.turns ?? 0} of {maxTurns}</span></Fact>
 			<Fact label="Cost (notional)"><span className="tabular">{money(run.cost_usd)}</span></Fact>
 		</div>

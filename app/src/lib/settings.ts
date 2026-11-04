@@ -24,3 +24,11 @@ export function notifyResultText(r: { ok: boolean; status: string }): string {
 
 // The runner handles a test request between scout runs. After this time the page stops waiting.
 export const TEST_WAIT_MS = 600_000;
+
+// Fix runs: a run in project mode prs with a scout from this list uses this model and effort.
+// The runner reads the same key (agent_model in bin/lib.sh). Keep the defaults in step with it.
+export const FIX_MODELS = ["opus", "sonnet", "haiku"] as const;
+export const FIX_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export const FIX_SCOUT_RE = /^[a-z0-9][a-z0-9-]*$/;
+export type FixRuns = { model: (typeof FIX_MODELS)[number]; effort: (typeof FIX_EFFORTS)[number]; scouts: string[] };
+export const FIX_RUNS_DEFAULT: FixRuns = { model: "opus", effort: "medium", scouts: ["instrumentation-gaps", "warden-ci", "signals-scout-error-tracking"] };

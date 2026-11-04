@@ -40,6 +40,11 @@ cat >"$t/bin/claude" <<'EOF'
 #!/usr/bin/env bash
 here=$(dirname "$0")
 echo run >>"$here/claude-runs"
+# Keep the model flags of the last call.
+args=("$@")
+for i in "${!args[@]}"; do
+	case ${args[i]} in --model | --effort) printf '%s %s\n' "${args[i]}" "${args[i + 1]}" ;; esac
+done >"$here/flags"
 [[ ! -f $(cat "$here/runfile") ]] || echo yes >>"$here/saw-running"
 jq -nc '{is_error: false, num_turns: 1, total_cost_usd: 0, result: ({summary: "stub", findings: [
   {fingerprint: "slow-lcp", action: "issue", severity: "low", title: "Slow LCP", body: "Body."}]} | tojson)}'
@@ -101,6 +106,27 @@ check "no pending item in mode dry" test ! -e "$STATE_ROOT/demo/pending"
 check "run record has mode dry" test "$(tail -n 1 "$runs" | jq -r .mode)" = dry
 echo '{"projects": {"demo": {"mode": "bogus"}}}' >"$STATE_ROOT/settings.json"
 check "invalid mode falls back to env MODE" test "$(project_mode demo "$MODE")" = issues
+rm "$STATE_ROOT/settings.json"
+
+echo "== Model of a run"
+flags() { tr '\n' ' ' <"$t/bin/flags"; }
+run_model() { # settings-json; runs the scout once and prints the flags
+	printf '%s' "$1" >"$STATE_ROOT/settings.json"
+	"$root/bin/run-scout.sh" demo "$scout" >"$t/m.out" 2>&1 || { cat "$t/m.out"; bad "run-scout exit model"; }
+	flags
+}
+rm -rf "$STATE_ROOT/demo/pending"
+check "mode issues gets the base model and no effort" test "$(run_model '{"projects": {"demo": {"mode": "issues"}}}')" = "--model sonnet "
+check "the run record has the base model and no effort" bash -c "tail -n 1 '$runs' | jq -e '.model == \"sonnet\" and .effort == null'"
+check "the new item records the model" test "$(jq -r .model "$STATE_ROOT/demo/pending/slow-lcp/meta.json")" = sonnet
+check "mode prs and a listed scout gets opus and medium" test "$(run_model '{"projects": {"demo": {"mode": "prs"}}}')" = "--model opus --effort medium "
+check "the run record has the fix model and effort" bash -c "tail -n 1 '$runs' | jq -e '.model == \"opus\" and .effort == \"medium\"'"
+check "a custom fix_runs value is used" test "$(run_model '{"projects": {"demo": {"mode": "prs"}}, "fix_runs": {"model": "haiku", "effort": "max"}}')" = "--model haiku --effort max "
+check "a scout that is not listed gets the base model" test "$(run_model '{"projects": {"demo": {"mode": "prs"}}, "fix_runs": {"scouts": ["warden-ci"]}}')" = "--model sonnet "
+check "an invalid model and effort fall back" test "$(run_model '{"projects": {"demo": {"mode": "prs"}}, "fix_runs": {"model": "gpt", "effort": 5}}')" = "--model opus --effort medium "
+check "an invalid scout list falls back to the default list" test "$(run_model '{"projects": {"demo": {"mode": "prs"}}, "fix_runs": {"scouts": ["../x"]}}')" = "--model opus --effort medium "
+check "a broken settings file falls back" test "$(run_model '{not json')" = "--model sonnet "
+check "agent_model reads the fix_runs type" test "$(run_model '{"projects": {"demo": {"mode": "prs"}}, "fix_runs": "x"}')" = "--model opus --effort medium "
 rm "$STATE_ROOT/settings.json"
 
 echo "== Run requests"

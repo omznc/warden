@@ -8,7 +8,8 @@ import { signOutEverywhere } from "./limiter";
 import { NAME } from "./paths";
 import { deletePasskey, passkeyRows, registerPasskey, registrationOptions, relyingParty } from "./passkeys";
 import { saveSecret, secretRows } from "./secrets";
-import { costView, decide, editItem, itemDetail, listItems, rejectDays, setCostCap, setRejectDays, setStaleDays, staleDays, startRun, updateProject } from "./store";
+import { FIX_EFFORTS, FIX_MODELS, FIX_SCOUT_RE } from "@/lib/settings";
+import { costView, decide, editItem, fixRunsView, itemDetail, listItems, rejectDays, setFixRuns, setCostCap, setRejectDays, setStaleDays, staleDays, startRun, updateProject } from "./store";
 import { findingsView, overviewView, projectView, runsView, runView, shellView } from "./views";
 
 const name = z.string().regex(NAME).max(200);
@@ -52,6 +53,16 @@ export const getStale = createServerFn().handler(async () => ({ days: staleDays(
 export const saveStale = createServerFn({ method: "POST" })
 	.validator(z.object({ days: z.number() }))
 	.handler(async ({ data }) => ({ days: setStaleDays(data.days) }));
+
+export const getFixRuns = createServerFn().handler(async () => fixRunsView());
+
+// Not a secret or a URL, so no password.
+export const saveFixRuns = createServerFn({ method: "POST" })
+	.validator(z.object({ model: z.enum(FIX_MODELS), effort: z.enum(FIX_EFFORTS), scouts: z.array(z.string().regex(FIX_SCOUT_RE).max(100)).max(40) }))
+	.handler(async ({ data }) => {
+		setFixRuns(data);
+		return fixRunsView();
+	});
 
 export const signOutEverywhereFn = createServerFn({ method: "POST" })
 	.validator(z.object({ password: z.string().max(500) }))

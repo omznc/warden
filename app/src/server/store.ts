@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import parseDiff from "parse-diff";
+import { SCOUTS } from "@/lib/scouts";
+import { FIX_EFFORTS, FIX_MODELS, FIX_RUNS_DEFAULT, FIX_SCOUT_RE, type FixRuns } from "@/lib/settings";
 import type { CostView, ItemDetail, ItemMeta, ItemSummary, Mode, Project, Run, TestResult, TestStatus } from "@/lib/types";
 import { type Env, env } from "./env";
 import { readJson, readText, writeJsonAtomic } from "./fsio";
@@ -61,7 +63,7 @@ export function nextRunAt(e: Env = env()): string | null {
 	return last ? new Date(Date.parse(last) + e.intervalHours * 3_600_000).toISOString() : null;
 }
 
-export type Settings = { daily_cost_cap_usd?: number; stale_days?: number; reject_days?: number; hermes_webhook_url?: string; warden_url?: string; coolify?: { name: string; url: string }[]; projects?: Record<string, { mode?: Mode; auto_submit?: boolean; auto_submit_prs?: boolean }> };
+export type Settings = { fix_runs?: unknown; daily_cost_cap_usd?: number; stale_days?: number; reject_days?: number; hermes_webhook_url?: string; warden_url?: string; coolify?: { name: string; url: string }[]; projects?: Record<string, { mode?: Mode; auto_submit?: boolean; auto_submit_prs?: boolean }> };
 
 export function costCap(e: Env = env()): number | null {
 	const cap = readJson<Settings>(`${e.stateRoot}/settings.json`, {}).daily_cost_cap_usd;
@@ -82,6 +84,31 @@ export function setCostCap(cap: number | null, e: Env = env()): number | null {
 		return cap === null ? rest : { ...rest, daily_cost_cap_usd: Math.round(cap * 100) / 100 };
 	});
 	return costCap(e);
+}
+
+// The model of a run that can fix code. The runner reads the same key. A missing or invalid field gives its default.
+export function fixRuns(e: Env = env()): FixRuns {
+	const raw = readJson<Settings>(`${e.stateRoot}/settings.json`, {}).fix_runs;
+	const f = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+	const scouts = Array.isArray(f.scouts) && f.scouts.every((s) => typeof s === "string" && FIX_SCOUT_RE.test(s)) ? [...new Set(f.scouts as string[])] : FIX_RUNS_DEFAULT.scouts;
+	return {
+		model: FIX_MODELS.find((m) => m === f.model) ?? FIX_RUNS_DEFAULT.model,
+		effort: FIX_EFFORTS.find((x) => x === f.effort) ?? FIX_RUNS_DEFAULT.effort,
+		scouts,
+	};
+}
+
+export function setFixRuns(input: FixRuns, e: Env = env()): FixRuns {
+	if (!FIX_MODELS.includes(input.model) || !FIX_EFFORTS.includes(input.effort) || !input.scouts.every((s) => FIX_SCOUT_RE.test(s))) throw new Error("Choose a model, an effort and valid scouts.");
+	mergeSettings(e, (fresh) => ({ ...fresh, fix_runs: { model: input.model, effort: input.effort, scouts: [...new Set(input.scouts)] } }));
+	return fixRuns(e);
+}
+
+// The scouts the card offers: the known scouts, the scouts of the projects, the defaults and the saved list.
+export function fixRunsView(e: Env = env()): FixRuns & { available: string[] } {
+	const cur = fixRuns(e);
+	const names = new Set([...SCOUTS.map((s) => s.name), ...loadProjects(e).flatMap((p) => p.scouts), ...FIX_RUNS_DEFAULT.scouts, ...cur.scouts]);
+	return { ...cur, available: [...names].filter((n) => FIX_SCOUT_RE.test(n)).sort() };
 }
 
 // Failures in a row and the last good run of a scout. The runner writes health.json. Wrong values count as missing.
@@ -284,6 +311,10 @@ export function findItem(id: string, project: string | undefined, e: Env = env()
 	return null;
 }
 
+function plainModel(m: unknown): string | undefined {
+	return typeof m === "string" && m.length <= 40 && /^[a-z0-9][a-z0-9.-]*$/.test(m) ? m : undefined;
+}
+
 export function itemDetail(id: string, project: string | undefined, e: Env = env()): ItemDetail | null {
 	const found = findItem(id, project, e);
 	if (!found) return null;
@@ -295,6 +326,8 @@ export function itemDetail(id: string, project: string | undefined, e: Env = env
 	const run = loadRuns(e).find((r) => r.project === found.project && r.scout === meta.scout && r.findings.some((f) => f.fingerprint === meta.fingerprint)) ?? null;
 	return {
 		...meta,
+		// The runner writes the model. Keep only a plain model name.
+		model: plainModel(meta.model),
 		id,
 		diff,
 		...(diff ? diffStats(diff) : {}),

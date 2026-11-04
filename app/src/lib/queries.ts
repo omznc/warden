@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { FindingsFilter } from "@/lib/types";
-import { getConnections, getCoolify, getCost, getFindings, getItem, getOverview, getProject, getProjectList, getIntegrations, getRejectDays, getRun, getRuns, getSecrets, getShell, getStale, listReview } from "@/server/fns";
+import { getConnections, getCoolify, getCost, getFindings, getFixRuns, getItem, getOverview, getProject, getProjectList, getIntegrations, getRejectDays, getRun, getRuns, getSecrets, getShell, getStale, listReview } from "@/server/fns";
 
 const POLL = 30_000;
 const FAST = 5000;
@@ -33,6 +33,7 @@ export const projectQuery = (id: string) => queryOptions({ queryKey: ["project",
 export const costQuery = () => queryOptions({ queryKey: ["cost"], queryFn: () => getCost(), refetchInterval: POLL });
 export const staleQuery = () => queryOptions({ queryKey: ["stale-days"], queryFn: () => getStale(), refetchInterval: POLL });
 export const rejectQuery = () => queryOptions({ queryKey: ["reject-days"], queryFn: () => getRejectDays(), refetchInterval: POLL });
+export const fixRunsQuery = () => queryOptions({ queryKey: ["fix-runs"], queryFn: () => getFixRuns(), refetchInterval: POLL });
 // Poll fast while a test notice waits for the runner.
 export const integrationsQuery = () =>
 	queryOptions({ queryKey: ["integrations"], queryFn: () => getIntegrations(), refetchInterval: (q) => (q.state.data?.test.requested ? 2000 : POLL) });

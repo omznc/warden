@@ -47,7 +47,7 @@ A pass runs each enabled project and scout in turn. After each run it calls `sub
 4. Read the open issues, PRs and branches of warden (the dedup lists).
 5. Prepare the input of the scout (`github-issues`, `warden-ci`, `coolify`).
 6. Write the MCP config, the settings and the system prompt (`prompts/harness.md`, the run context, the skill).
-7. `agent_prepare`, then run the agent. Compare the hash of `.git/config` and `.git/hooks`.
+7. `agent_prepare`. Choose the model and effort (`agent_model`). Run the agent. Compare the hash of `.git/config` and `.git/hooks`.
 8. Read the JSON. Handle each finding: scan, dedup, then item or write.
 9. Mark the seen files. Send notices.
 10. The `EXIT` trap writes the run record and the event, removes the temp files, closes the checkout and calls `health_record`.

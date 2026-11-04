@@ -23,6 +23,8 @@ summary=
 agent_summary=
 turns=
 cost=
+AGENT_MODEL=
+AGENT_EFFORT=
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 run_id=$(date -u +%Y%m%dT%H%M%SZ)-$proj-$scout
 running=$STATE_ROOT/running/${proj}__$scout.json
@@ -35,8 +37,10 @@ write_record() {
 	touch "$tmp/findings.jsonl"
 	jq -nc --arg id "$run_id" --arg started "$started" --arg ended "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg project "$proj" --arg scout "$scout" \
 		--arg mode "$MODE" --arg rc "$rc" --arg skip "$skip_reason" --arg err "${err:-command failed}" --arg summary "$agent_summary" \
-		--arg turns "$turns" --arg cost "$cost" --slurpfile findings "$tmp/findings.jsonl" \
+		--arg turns "$turns" --arg cost "$cost" --arg model "$AGENT_MODEL" --arg effort "$AGENT_EFFORT" \
+		--slurpfile findings "$tmp/findings.jsonl" \
 		'{id: $id, started: $started, ended: $ended, project: $project, scout: $scout, mode: $mode,
+		  model: (if $model == "" then null else $model end), effort: (if $effort == "" then null else $effort end),
 		  status: (if $skip != "" then "skipped" elif $rc == "0" then "ok" else "error" end),
 		  error: (if $skip != "" then $skip elif $rc == "0" then null else $err[:300] end),
 		  summary: (if $summary == "" then null else $summary end),
@@ -324,7 +328,8 @@ before=$(git_state)
 # /state/<project> is closed except for the one scout directory. The run directories are closed in lib.sh.
 strip_world_write "$STATE_ROOT/$proj" "$checkout"
 agent_prepare "$proj" "$state" "$checkout" || die "cannot set the agent permissions"
-log "running claude (mode $MODE)"
+read -r AGENT_MODEL AGENT_EFFORT < <(agent_model "$proj" "$scout") || true
+log "running claude (mode $MODE, model $AGENT_MODEL${AGENT_EFFORT:+, effort $AGENT_EFFORT})"
 export STATE_DIR=$state
 agent_build "Run the $scout scout for project $proj now. Return only the JSON object." "$tmp/system.md" \
 	"$sbx/mcp.json" "$sbx/settings.json" "${MAX_TURNS:-60}" --add-dir "$skill_dir" --add-dir "$state"
@@ -458,8 +463,9 @@ pending_write() {
 	[[ -n $extra ]] || extra='{}'
 	mkdir -p "$d"
 	jq -n --arg kind "$1" --arg fp "$fp" --arg project "$proj" --arg scout "$scout" --arg title "$title" --rawfile body "$3" \
-		--arg num "${4:-}" --arg sev "$sev" --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson extra "$extra" --arg footer "${footer:-}" \
+		--arg num "${4:-}" --arg sev "$sev" --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson extra "$extra" --arg footer "${footer:-}" --arg model "$AGENT_MODEL" \
 		'{kind: $kind, fingerprint: $fp, project: $project, scout: $scout, title: $title, body: $body,
+		  model: (if $model == "" then null else $model end),
 		  number: ($num | tonumber? // null), severity: $sev, created: $created, status: "pending", url: null} + $extra
 			  + (if $footer == "" then {} else {footer: $footer, body: ($body | sub("\\s+$"; ""))} end)' >"$d/meta.json.tmp"
 	mv "$d/meta.json.tmp" "$d/meta.json"

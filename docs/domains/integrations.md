@@ -15,6 +15,7 @@ For key handling, read `secrets.md`.
 
 - Secrets: `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`), or `ANTHROPIC_AUTH_TOKEN` with `ANTHROPIC_BASE_URL` and an empty `ANTHROPIC_API_KEY` (for example OpenRouter), or `ANTHROPIC_API_KEY`.
 - `CLAUDE_MODEL` (default `sonnet`) and `MAX_TURNS` (default 60) go to the agent command.
+- A run that can fix code uses the model and effort of `fix_runs` in `settings.json` (default `opus`, `medium`). See `state.md`. The Claude page of the UI sets it. It needs no password.
 - The cost of a run comes from `total_cost_usd` in the JSON output of `claude`. The daily cap uses it. See `state.md`.
 
 ## PostHog data
