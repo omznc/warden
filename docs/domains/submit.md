@@ -41,6 +41,7 @@ Issues and comments do not use the checkout. They go out at once.
 - It checks that `project` and `fingerprint` match `^[a-z0-9][a-z0-9-]*$` and that `kind` is one of the four kinds.
 - It takes `repo` from `projects.json`, never from the item. A project that is not valid in the file blocks the write.
 - It scans `title`, `body` and `footer` again, and for a PR also `patch.diff`, with `secret_hit`. A hit prints `blocked-secret` and returns 2. The list of secrets can change after the item was saved.
+- A `submit_pr` that finds a merge conflict with the default branch prints the reason and returns 3. The loop then sets `stale` (with `stale_at` and the reason in `error`), removes `bundle` and `patch.diff`, and sends no notice. A `stale` item does not block the fingerprint, so the next scout run can propose the change again.
 - It calls `submit_issue`, `submit_comment`, `submit_pr` or `submit_pr_update`. Each prints the URL and nothing else on stdout. Git output goes to stderr (`gq`).
 
 ## Result checks

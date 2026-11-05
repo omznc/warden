@@ -59,8 +59,8 @@ submit_pr() { # meta-file repo; prints the PR url
 	gq -C "$checkout" fetch -q --force "$d/bundle" "refs/heads/$br:refs/heads/$br" || return 1
 	# The default branch can move between the run and the approval. Do not open a PR that conflicts with it.
 	if ! gitc -C "$checkout" merge-tree --write-tree "origin/$def" "$br" >/dev/null 2>&1; then
-		echo "the change conflicts with $def now; run the scout again"
-		return 1
+		echo "the change conflicts with $def now; the next scout run can propose it again"
+		return 3
 	fi
 	gq -C "$checkout" push -q origin "$br" || return 1
 	rel=$(jq -r '.related_issue // empty' "$meta")
@@ -251,6 +251,12 @@ for meta in "$STATE_ROOT"/*/pending/*/meta.json; do
 		elif ((rc == 0)); then
 			setmeta "$meta" '.status = "error" | .error = "The write returned no valid GitHub URL. Check GitHub before you retry."'
 			"$root/bin/notify.sh" "warden: $(label "$kind") submit unclear: $title. Check GitHub." || true
+		elif ((rc == 3)); then
+			# The change conflicts with the default branch. A stale item does not block the fingerprint: the next run can propose it again.
+			at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+			setmeta "$meta" --arg at "$at" --arg e "$(short_err "$out")" '.status = "stale" | .stale_at = $at | .error = $e'
+			rm -f "$(dirname "$meta")/bundle" "$(dirname "$meta")/patch.diff"
+			item_event "$meta" approved stale
 		else
 			setmeta "$meta" --arg e "$(short_err "$out")" '.status = "error" | .error = $e'
 			if [[ $out == blocked-secret ]]; then
