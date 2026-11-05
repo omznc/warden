@@ -27,7 +27,7 @@ Read `submit.md` for the write. The code for this page is in `bin/run-scout.sh` 
 - `meta.json` fields: `kind`, `fingerprint`, `project`, `scout`, `title`, `body`, `number`, `severity`, `created`, `status`, `url`, `model` (the model of the run that made the item, for example `opus`; an old item has none). A `pr` item also has `base_sha` and `related_issue`. A `pr-update` item has `number` (the PR) and `base_sha` (the head of the PR at run time).
 - The runner writes `meta.json` last, by an atomic rename. A reader never sees a partial item.
 - For `issue` and `comment`, `body` has no footer. The field `footer` holds the text that the submit step appends. The submit step does not append it when the body holds the marker already.
-- Footer for a scout finding: a line `---`, a logo (only when `WARDEN_ASSET_URL` is set), the line `<scout> scout · <note>`, and the marker `<!-- warden:fp=<key> -->`. The note is `reviewed by a person before it was posted`, or `posted automatically` when the project has auto-submit on. The scouts `github-issues` and `warden-ci` use the label `triage` and the key `<scout>-<number>`. The runner also deletes Claude attribution lines from the body.
+- Footer for a scout finding: a line `---`, a logo that links to the Warden repository (only when `WARDEN_ASSET_URL` is set), and on the same line `<scout> scout · <note>`, and the marker `<!-- warden:fp=<key> -->`. The note is `reviewed by a person before it was posted`, or `created automatically` when the project has auto-submit on. An item that auto-submit holds for a person also says `created automatically`. The scouts `github-issues` and `warden-ci` use the label `triage` and the key `<scout>-<number>`. The runner also deletes Claude attribution lines from the body.
 - The UI can edit `title` (one line, at most 300 characters) and `body` (at most 60000) of a pending item. It sets `edited_at`.
 - `decided_at` and `reject_reason` (at most 500 characters): written by the UI.
 - `submitted_at`, `stale_at`, `error`, `feedback_recorded`: written by the runner.
@@ -84,7 +84,7 @@ More rules:
 - With it on, the runner writes at once and saves no item: `gh issue create`, `gh issue comment`, or a push and `gh pr create --draft`.
 - The same secret scan and the same blocked paths apply. The same dedup applies, using GitHub as the source for comments.
 - A `pr-update` in auto mode is a plain push to the PR branch. It never forces. See `warden-ci.md`.
-- A `pr` or `pr-update` with a high finding in `review.json`, or with the verdict `error`, does not auto-submit. The runner saves it as a pending item for a person, and its footer says "reviewed by a person". The variable `auto_hold` in `run-scout.sh` does this.
+- A `pr` or `pr-update` with a high finding in `review.json`, or with the verdict `error`, does not auto-submit. The runner saves it as a pending item for a person. Its footer still says "created automatically". The variable `auto_hold` in `run-scout.sh` does this.
 
 ## Independent review
 

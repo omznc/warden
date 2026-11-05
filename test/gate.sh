@@ -343,7 +343,7 @@ check "no branch for the held PR" bash -c "! git -C '$t/origin.git' rev-parse -q
 check "the reviewer does not get the fixer's Review section" bash -c "! grep -q 'Fixer verdict' '$t/bin/sys.review' && grep -q 'Keep me.' '$t/bin/sys.review'"
 check "review.json holds the high finding" test "$(jq -r '.findings[0].severity' "$pend/review-high/review.json")" = high
 check "the PR body has the review section" bash -c "jq -r .body '$pend/review-high/meta.json' | grep -q '^## Independent review' && jq -r .body '$pend/review-high/meta.json' | grep -q 'a.ts:3. (high): Leaks data.'"
-check "the held PR footer does not say posted automatically" bash -c "test -s '$pend/review-high/meta.json' && ! jq -r .body '$pend/review-high/meta.json' | grep -q 'posted automatically'"
+check "the held PR footer says created automatically" bash -c "jq -r .body '$pend/review-high/meta.json' | grep -q 'created automatically' && ! jq -r .body '$pend/review-high/meta.json' | grep -q 'reviewed by a person'"
 scout_run review-high >"$t/p1.out" 2>&1 || { cat "$t/p1.out"; bad "run-scout exit P1"; }
 check "a second run leaves one item for the held fingerprint" test "$(jq -rs '[.[] | select(.fingerprint == "review-high")] | length' "$pend"/*/meta.json)" = 1
 review_mode ok

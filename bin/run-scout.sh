@@ -802,9 +802,9 @@ strip_attribution() {
 # footer_md <label> <marker-key>: print the footer. WARDEN_ASSET_URL is a base URL for the logo files.
 footer_md() {
 	local base=${WARDEN_ASSET_URL:-}; base=${base%/} note='reviewed by a person before it was posted' logo='' lead='Warden · '
-	is_auto && ((!auto_hold)) && note='posted automatically'
+	is_auto && note='created automatically'
 	if [[ -n $base ]]; then
-		logo="<picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"$base/warden-lockup-dark.svg\"><img src=\"$base/warden-lockup-light.svg\" height=\"20\" alt=\"Warden\"></picture><br>"$'\n'
+		logo="<a href=\"https://github.com/omznc/warden\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"$base/warden-lockup-dark.svg\"><img src=\"$base/warden-lockup-light.svg\" height=\"20\" alt=\"Warden\" align=\"middle\"></picture></a> "
 		lead=
 	fi
 	printf '\n\n---\n%s<sub>%s%s · %s</sub>\n<!-- warden:fp=%s -->' "$logo" "$lead" "$1" "$note" "$2"
