@@ -50,7 +50,8 @@ export function StatusBanner({ item }: { item: ItemDetail }) {
 	if (item.status === "stale") {
 		return (
 			<Banner tone="neutral" icon={<Hourglass aria-hidden className="size-4" />}>
-				<strong>Stale.</strong> This item is older than {item.staleDays} days. Ask for a new run.
+				<strong>Stale.</strong>{" "}
+				{item.error ? `${item.error}.` : `This item is older than ${item.staleDays} days. Ask for a new run.`}
 			</Banner>
 		);
 	}
