@@ -152,7 +152,7 @@ check "exactly one issue comment" test "$(comments)" = 1
 check "create has the warden label" grep -q '^issue create .*--label warden' "$GH_LOG"
 check "comment is on issue 1" grep -q '^issue comment 1 ' "$GH_LOG"
 check "comment body has the marker" grep -q "<!-- warden:fp=github-issues-1 -->" "$BODY_COPY.comment"
-check "comment body has the footer" grep -q "^Triage by Warden (automated)\\.\$" "$BODY_COPY.comment"
+check "comment body has the footer" grep -q "^<sub>Warden · triage · " "$BODY_COPY.comment"
 check "issue body has the marker" grep -q "<!-- warden:fp=gh-new-thing -->" "$BODY_COPY.create"
 check "comment is submitted" test "$(pcount comment submitted)" = 1
 check "issue is submitted with the url" test "$(jq -r .url "$STATE_ROOT/demo/pending/gh-new-thing/meta.json")" = https://github.com/example/repo/issues/3

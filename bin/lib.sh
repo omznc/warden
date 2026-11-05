@@ -140,16 +140,23 @@ agent_settings() {
 	   $sbx + "/**", "//home/runner/**", "//home/agent/.claude/**", "//home/agent/.claude.json", $home + "/.claude/**", $home + "/.claude.json"] as $secret
 	  | [$secret[] | ("Read(", "Edit(") + . + ")"]
 	    + [($co + "/.git/**", $co + "/.github/**") | "Edit(" + . + ")"]
-	  | {permissions: {deny: .}}' >"$f"
+	  | {permissions: {deny: .}, attribution: {commit: "", pr: ""}}' >"$f"
 	agent_share "$f"
 }
 
 agent_cmd=()
 agent_allowed='Read,Edit,Write,Glob,Grep,mcp__posthog__*,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(ls:*)'
 agent_denied='Bash(git push:*),Bash(gh:*),Bash(curl:*),Bash(wget:*),WebFetch,WebSearch,Bash(git * --no-index*),Bash(git * --output*),Bash(git * --ext-diff*),Bash(git * --textconv*)'
+# The reviewer reads only. It has no Edit, no Write and no MCP tool. It keeps every deny of the fix agent.
+# SC2034: run-scout.sh uses both lists.
+# shellcheck disable=SC2034
+agent_review_allowed='Read,Glob,Grep,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(ls:*)'
+# shellcheck disable=SC2034
+agent_review_denied="$agent_denied,Edit,Write,NotebookEdit"
 
 # agent_build <prompt> <system-file> <mcp-file> <settings-file> <max-turns> [extra claude args...]
 # The runner shell variables AGENT_MODEL and AGENT_EFFORT (from agent_model) set --model and --effort.
+# AGENT_ALLOWED and AGENT_DENIED replace the tool lists (agent_allowed, agent_denied) for one call. The reviewer uses them.
 # They are not exported and not in the agent environment.
 # Sets the array agent_cmd. The agent gets a clean environment: no secret except its own model credentials.
 # Export STATE_DIR before the call. With isolation, sudo passes the variables by name (--preserve-env), so no
@@ -161,7 +168,7 @@ agent_build() {
 		--append-system-prompt "$(cat "$sys")"
 		--mcp-config "$mcp" --strict-mcp-config --settings "$settings"
 		--output-format json --max-turns "$turns" --model "${AGENT_MODEL:-${CLAUDE_MODEL:-sonnet}}"
-		--permission-mode acceptEdits --allowedTools "$agent_allowed" --disallowedTools "$agent_denied" "$@")
+		--permission-mode acceptEdits --allowedTools "${AGENT_ALLOWED:-$agent_allowed}" --disallowedTools "${AGENT_DENIED:-$agent_denied}" "$@")
 	[[ -z ${AGENT_EFFORT:-} ]] || claude_args+=(--effort "$AGENT_EFFORT")
 	if agent_isolated; then
 		for v in STATE_DIR CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY; do

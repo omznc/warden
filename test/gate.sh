@@ -36,6 +36,7 @@ case "$1 $2" in
 "repo view") echo main ;;
 "issue list" | "pr list")
 	# A -q filter on stub output gives an empty value, a --json call gives an empty list.
+	if [[ " $* " == *"headRefName,files"* && -n ${OPEN_PRS:-} ]]; then cat "$OPEN_PRS"; exit 0; fi
 	[[ " $* " == *" -q "* ]] || echo '[]'
 	;;
 api*)
@@ -62,6 +63,26 @@ cat >"$t/bin/claude" <<'EOF'
 #!/usr/bin/env bash
 here=$(dirname "$0")
 env | grep -c -E '^(GH_TOKEN|GITHUB_TOKEN|POSTHOG_API_KEY_DEMO|HERMES_WEBHOOK_SECRET)=' >"$here/envcount" || true
+# The review call carries the title of review-pass.md in its system prompt. Keep what each call got.
+kind=fix
+[[ "$*" != *"Independent review of a change"* ]] || kind=review
+prev=
+for a in "$@"; do
+	[[ $prev != --append-system-prompt ]] || printf '%s' "$a" >"$here/sys.$kind"
+	[[ $prev != --allowedTools ]] || printf '%s' "$a" >"$here/allowed.$kind"
+	prev=$a
+done
+if [[ $kind == review ]]; then
+	echo review >>"$here/review.log"
+	r='{"verdict":"ok","summary":"Fine.","findings":[]}'
+	case $(cat "$here/rmode" 2>/dev/null) in
+	high) r='{"verdict":"changes","summary":"Bad.","findings":[{"file":"a.ts","line":3,"severity":"high","summary":"Leaks data."}]}' ;;
+	bad) r='this is not json' ;;
+	edit) echo tamper >>README ;;
+	esac
+	jq -nc --arg r "$r" '{is_error: false, result: $r, num_turns: 1, total_cost_usd: 0.02}'
+	exit 0
+fi
 fp=$(cat "$here/fp")
 mode=$(cat "$here/mode")
 leak=
@@ -80,7 +101,7 @@ if [[ $mode == twopr ]]; then
 	exit 0
 fi
 findings=$(jq -nc --arg fp "$fp" --arg leak "$leak" '{summary: "stub", findings: [
-  {fingerprint: $fp, action: "pr", severity: "high", title: "Guard null", body: "Body of the PR."},
+  {fingerprint: $fp, action: "pr", severity: "high", title: "Guard null", body: "Body of the PR.\n\n## Review\n\nFixer verdict: all fine.\n\n## Notes\n\nKeep me.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n"},
   {fingerprint: "slow-lcp", action: "issue", severity: "low", title: "Slow LCP", body: ("Body of the issue. " + $leak)},
   {fingerprint: "slow-lcp-note", action: "comment", number: 9, severity: "low", title: "More on LCP", body: "Body of the comment."}]}')
 jq -nc --arg r "$findings" '{is_error: false, result: $r, num_turns: 2, total_cost_usd: 0.01}'
@@ -119,6 +140,8 @@ fp=error-tracking-null-guard
 check "pending bundle exists" test -f "$pend/$fp/bundle"
 check "pending patch.diff exists" test -s "$pend/$fp/patch.diff"
 check "meta status pending" test "$(jq -r .status "$pend/$fp/meta.json")" = pending
+check "the PR body has no Claude attribution" bash -c "! jq -r .body '$pend/$fp/meta.json' | grep -q 'Generated with'"
+check "the PR body has the footer label" bash -c "jq -r .body '$pend/$fp/meta.json' | grep -q '^<sub>Warden · signals-scout-error-tracking scout · reviewed by a person'"
 check "no pr create before approval" test "$(pr_creates)" = 0
 check "no branch in origin before approval" bash -c "! git -C '$t/origin.git' rev-parse -q --verify refs/heads/warden/$fp"
 check "no issue create before approval" test "$(creates)" = 0
@@ -130,6 +153,12 @@ check "last run records action pending" test "$(last_action $fp)" = pending
 check "last run records pending-issue" test "$(last_action slow-lcp)" = pending-issue
 check "last run records pending-comment" test "$(last_action slow-lcp-note)" = pending-comment
 check "GH_TOKEN not in claude env" test "$(cat "$CLAUDE_ENV_COUNT")" = 0
+check "a prs run gets the self-review rules in the system prompt" grep -q '^# Review your change before the final message' "$t/bin/sys.fix"
+check "the reviewer had no fix-review text" bash -c "! grep -q 'Review your change before the final message' '$t/bin/sys.review'"
+check "the reviewer has no write tool" bash -c "! grep -qE 'Edit|Write|mcp' '$t/bin/allowed.review'"
+check "review.json is next to meta.json" test "$(jq -r .verdict "$pend/$fp/review.json")" = ok
+check "the PR body has the review section before the footer" bash -c "jq -r .body '$pend/$fp/meta.json' | awk '/^## Independent review/ {r = NR} /^<sub>Warden/ {f = NR} END {exit !(r && f && r < f)}'"
+check "the reviewer cost is in the run record" test "$(tail -n 1 "$runs" | jq -r .cost_usd)" = 0.03
 
 echo "== Approve and submit"
 for m in "$pend"/*/meta.json; do
@@ -140,7 +169,7 @@ check "exactly one issue create after approval" test "$(creates)" = 1
 check "exactly one issue comment after approval" test "$(comments)" = 1
 check "comment is on issue 9" grep -q '^issue comment 9 ' "$GH_LOG"
 check "issue body has the marker" grep -q '<!-- warden:fp=slow-lcp -->' "$BODY_COPY.create"
-check "comment body has the footer" grep -q '^Found by the signals-scout-error-tracking scout\.$' "$BODY_COPY.comment"
+check "comment body has the footer" grep -q '^<sub>Warden · signals-scout-error-tracking scout · ' "$BODY_COPY.comment"
 check "branch pushed to origin" branch_in_origin "$fp"
 check "branch has the commit" bash -c "git -C '$t/origin.git' log -1 --format=%s refs/heads/warden/$fp | grep -q 'Guard null'"
 check "pr create is a draft" grep -q '^pr create.* --draft' "$GH_LOG"
@@ -223,18 +252,21 @@ check "feedback_recorded is set" test "$(jq -r .feedback_recorded "$pend/$fpr/me
 echo "== Case I: a pr finding in mode issues"
 MODE=issues scout_run skipmode-one >"$t/i.out" 2>&1 || { cat "$t/i.out"; bad "run-scout exit I"; }
 check "run records skipped-mode" test "$(last_action skipmode-one)" = skipped-mode
+check "an issues run has no self-review rules" bash -c "! grep -q 'Review your change before the final message' '$t/bin/sys.fix'"
+MODE=dry scout_run dry-one >"$t/i2.out" 2>&1 || { cat "$t/i2.out"; bad "run-scout exit I2"; }
+check "a dry run has no self-review rules" bash -c "! grep -q 'Review your change before the final message' '$t/bin/sys.fix'"
 
 echo "== Case J: the footer is not appended twice"
 mkdir -p "$pend/old-issue" "$pend/new-issue"
 jq -n '{kind: "issue", fingerprint: "old-issue", project: "demo", scout: "s", title: "Old", body: "Text\n<!-- warden:fp=old-issue -->\n", number: null, status: "pending"}' >"$pend/old-issue/meta.json"
-jq -n '{kind: "issue", fingerprint: "new-issue", project: "demo", scout: "s", title: "New", body: "Text", footer: "\n\nFound by the s scout.\n<!-- warden:fp=new-issue -->", number: null, status: "pending"}' >"$pend/new-issue/meta.json"
+jq -n '{kind: "issue", fingerprint: "new-issue", project: "demo", scout: "s", title: "New", body: "Text", footer: "\n\n---\n<sub>Warden · s scout · note</sub>\n<!-- warden:fp=new-issue -->", number: null, status: "pending"}' >"$pend/new-issue/meta.json"
 for i in old-issue new-issue; do
 	jq '.status = "approved"' "$pend/$i/meta.json" >"$pend/$i/m.tmp" && mv "$pend/$i/m.tmp" "$pend/$i/meta.json"
 	"$root/bin/submit-approved.sh" >/dev/null 2>&1 || true
 	check "$i is submitted" test "$(jq -r .status "$pend/$i/meta.json")" = submitted
 	check "$i body has the marker one time" test "$(grep -c "warden:fp=$i" "$BODY_COPY.create")" = 1
 done
-check "the new item body has the footer text" grep -q '^Found by the s scout\.$' "$BODY_COPY.create"
+check "the new item body has the footer text" grep -q '^<sub>Warden · s scout · ' "$BODY_COPY.create"
 
 echo "== Case L: a skipped finding leaves no commit for the next one"
 git -C "$t/seed" push -q origin HEAD:refs/heads/warden/dup-one
@@ -286,6 +318,59 @@ mkdir -p "$STATE_ROOT/demo/ledger.json.tmp"
 "$root/bin/submit-approved.sh" >/dev/null 2>&1 || true
 rmdir "$STATE_ROOT/demo/ledger.json.tmp"
 check "a ledger failure does not turn a written issue into an error" test "$(jq -r '.status + ":" + .url' "$pend/ledger-one/meta.json")" = "submitted:https://github.com/example/repo/issues/3"
+
+echo "== Case P: the independent review"
+review_mode() { printf '%s' "$1" >"$t/bin/rmode"; }
+echo '{"projects": {"demo": {"auto_submit": true}}}' >"$STATE_ROOT/settings.json"
+review_mode high
+prs_before=$(pr_creates)
+scout_run review-high >"$t/p.out" 2>&1 || { cat "$t/p.out"; bad "run-scout exit P"; }
+check "a high finding holds the PR in auto-submit" test "$(jq -r .status "$pend/review-high/meta.json")" = pending
+check "no pr create for the held PR" test "$(pr_creates)" = "$prs_before"
+check "no branch for the held PR" bash -c "! git -C '$t/origin.git' rev-parse -q --verify refs/heads/warden/review-high"
+check "the reviewer does not get the fixer's Review section" bash -c "! grep -q 'Fixer verdict' '$t/bin/sys.review' && grep -q 'Keep me.' '$t/bin/sys.review'"
+check "review.json holds the high finding" test "$(jq -r '.findings[0].severity' "$pend/review-high/review.json")" = high
+check "the PR body has the review section" bash -c "jq -r .body '$pend/review-high/meta.json' | grep -q '^## Independent review' && jq -r .body '$pend/review-high/meta.json' | grep -q 'a.ts:3. (high): Leaks data.'"
+check "the held PR footer does not say posted automatically" bash -c "! jq -r .body '$pend/review-high/meta.json' | grep -q 'posted automatically'"
+review_mode ok
+scout_run review-fine >"$t/p2.out" 2>&1 || { cat "$t/p2.out"; bad "run-scout exit P2"; }
+check "a clean review lets auto-submit write the PR" test "$(pr_creates)" = "$((prs_before + 1))"
+review_mode bad
+scout_run review-bad >"$t/p3.out" 2>&1 || { cat "$t/p3.out"; bad "run-scout exit P3"; }
+check "a bad reviewer answer does not fail the run" test "$(tail -n 1 "$runs" | jq -r .status)" = ok
+check "a bad reviewer answer gives the verdict error" test "$(jq -r .verdict "$pend/review-bad/review.json")" = error
+check "an error verdict holds the PR in auto-submit" test "$(jq -r .status "$pend/review-bad/meta.json")" = pending
+review_mode edit
+scout_run review-edit >"$t/p4.out" 2>&1 || { cat "$t/p4.out"; bad "run-scout exit P4"; }
+check "a reviewer that edits a file discards the item" test ! -e "$pend/review-edit"
+check "the run records blocked-review" test "$(last_action review-edit)" = blocked-review
+check "the checkout is clean after the discard" test -z "$(git -C "$WORK_ROOT/demo" status --porcelain)"
+review_mode ok
+rm "$STATE_ROOT/settings.json"
+
+echo "== Case Q: a file of the open PR of another author"
+printf '[{"number": 12, "title": "Other work", "headRefName": "alice/fix", "files": [{"path": "src/shared.ts"}]}]' >"$t/openprs.json"
+printf '%s' src/shared.ts >"$t/bin/file"
+OPEN_PRS=$t/openprs.json scout_run clash-one file >"$t/q.out" 2>&1 || { cat "$t/q.out"; bad "run-scout exit Q"; }
+check "the system prompt lists the open PR of the other author" grep -q '"number":12.*src/shared.ts' "$t/bin/sys.fix"
+check "a change to such a file is not saved as a PR" test ! -e "$pend/clash-one"
+check "the run records skipped-open-pr" test "$(last_action clash-one)" = skipped-open-pr
+printf '%s' src/other.ts >"$t/bin/file"
+OPEN_PRS=$t/openprs.json scout_run clash-two file >"$t/q2.out" 2>&1 || { cat "$t/q2.out"; bad "run-scout exit Q2"; }
+check "a change to another file is saved" test -f "$pend/clash-two/meta.json"
+
+echo "== Case R: the default branch moves after the run"
+scout_run conflict-one >"$t/r.out" 2>&1 || { cat "$t/r.out"; bad "run-scout exit R"; }
+echo "other text" >"$t/seed/change-conflict-one.txt"
+git -C "$t/seed" add change-conflict-one.txt
+git -C "$t/seed" commit -q -m "same file"
+git -C "$t/seed" push -q origin HEAD:main
+jq '.status = "approved"' "$pend/conflict-one/meta.json" >"$pend/conflict-one/m.tmp" && mv "$pend/conflict-one/m.tmp" "$pend/conflict-one/meta.json"
+prs_before=$(pr_creates)
+"$root/bin/submit-approved.sh" >"$t/r2.out" 2>&1 || true
+check "a PR that conflicts with the default branch gets status error" test "$(jq -r .status "$pend/conflict-one/meta.json")" = error
+check "the error says that the change conflicts" bash -c "jq -r .error '$pend/conflict-one/meta.json' | grep -q 'conflicts with main'"
+check "no pr create for the conflicting PR" test "$(pr_creates)" = "$prs_before"
 
 echo "== Case K: daily cost cap"
 printf '%s\n' "{\"started\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"cost_usd\": 0.5, \"findings\": []}" >>"$runs"

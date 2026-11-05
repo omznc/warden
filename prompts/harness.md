@@ -63,7 +63,10 @@ At most one finding in a run can get action `pr`.
 - Do not edit `.git/` or `.github/`. The script rejects such a change.
 - The script also blocks a change to these files at any depth: `.gitattributes`, `CODEOWNERS`, `Makefile`, `Dockerfile*`, `Containerfile*`, `package.json`, lockfiles, `bunfig.toml`, `.npmrc`. Do not add a dependency. If the fix needs such a file, use action `issue`.
 - Follow `AGENTS.md`, `CLAUDE.md`, and `CONTRIBUTING` of the repository.
-- Run the typecheck and the tests when they are cheap. Do not install large toolchains.
+- You cannot run the typecheck, the lint or the tests. Do not claim that you ran them.
+- Always use what the repository already has. Before you write a function, a type or a pattern, search for one that exists. Read the nearest sibling file and copy its form. Put new code next to its siblings, and its test in the sibling's test file.
+- Code that sends data to telemetry, a log or an error tracker must not send a raw error, a query, request data or user data. Use the redaction helper of the repository. If there is none, use action `issue`.
+- The run context lists the open pull requests of other authors and their files. Do not edit a file that one of them changes. Use action `issue` and name the pull request.
 - Make the smallest change that fixes the problem. Do not refactor.
 - If you cannot make a safe fix, use action `issue` instead.
 

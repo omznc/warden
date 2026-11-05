@@ -46,9 +46,9 @@ A pass runs each enabled project and scout in turn. After each run it calls `sub
 3. Give the directories back to the runner (`agent_reclaim`). Reset the checkout to the default branch.
 4. Read the open issues, PRs and branches of warden (the dedup lists).
 5. Prepare the input of the scout (`github-issues`, `warden-ci`, `coolify`).
-6. Write the MCP config, the settings and the system prompt (`prompts/harness.md`, the run context, the skill).
+6. Write the MCP config, the settings and the system prompt (`prompts/harness.md`, the run context with the open PRs of other authors, `prompts/fix-review.md` in mode `prs`, the skill).
 7. `agent_prepare`. Choose the model and effort (`agent_model`). Run the agent. Compare the hash of `.git/config` and `.git/hooks`.
-8. Read the JSON. Handle each finding: scan, dedup, then item or write.
+8. Read the JSON. Handle each finding: scan, dedup, then item or write. A `pr` that touches a file of another author's open PR is skipped. Before a `pr` or `pr-update` is saved, `review_change` runs the independent reviewer (`prompts/review-pass.md`) and writes `review.json`. A high finding or a failed review holds the item for a person, also with auto-submit.
 9. Mark the seen files. Send notices.
 10. The `EXIT` trap writes the run record and the event, removes the temp files, closes the checkout and calls `health_record`.
 

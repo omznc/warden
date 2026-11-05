@@ -94,6 +94,10 @@ export type TestResult = {
 	output_tail: string;
 };
 
+export type ReviewVerdict = "ok" | "changes" | "error";
+export type ReviewFinding = { file: string; line: number | null; severity: "low" | "medium" | "high"; summary: string };
+export type ReviewResult = { verdict: ReviewVerdict; summary: string; findings: ReviewFinding[] };
+
 export type ItemDetail = ItemSummary & {
 	body: string;
 	diff: string | null;
@@ -101,6 +105,7 @@ export type ItemDetail = ItemSummary & {
 	branch: string;
 	run: Run | null;
 	tests: TestResult | null;
+	review: ReviewResult | null;
 	staleDays: number;
 	pendingTotal: number;
 	nextPendingId: string | null;

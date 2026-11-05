@@ -18,10 +18,11 @@ import { notifyResultText, TEST_WAIT_MS, urlError } from "@/lib/settings";
 import { guardedCheck, resetLimiter, signOutEverywhere } from "./limiter";
 import { ConflictError, rejectDays, setRejectDays, writeMetaChecked } from "./store";
 import { createHash } from "node:crypto";
-import { decide, editItem, fixRuns, fixRunsView, setFixRuns, itemCreatedMs, itemDetail, scoutHealth, setStaleDays, listItems, loadProjects, projectSettings, readTestResult, startRun, updateProject } from "./store";
+import { decide, editItem, fixRuns, fixRunsView, setFixRuns, itemCreatedMs, itemDetail, scoutHealth, setStaleDays, listItems, loadProjects, projectSettings, readReview, readTestResult, startRun, updateProject } from "./store";
 import { findingsView, overviewView, projectView, runView } from "./views";
 import { findingState, ghLabel, parseGh } from "@/lib/gh";
 import { TestsCard } from "@/components/tests-card";
+import { ReviewCard } from "@/components/review-card";
 import { createElement } from "react";
 import { CoolifyLine } from "@/components/coolify-panel";
 import { coolifyKey, coolifyNameError, coolifyUrlError } from "@/lib/coolify";
@@ -381,6 +382,19 @@ describe("test results", () => {
 		writeFileSync(join(dir, "ab12.json"), JSON.stringify({ status: "pass", output_tail: "x".repeat(50_000) }));
 		expect(readTestResult("web", "ab12", env)?.output_tail.length).toBe(20_000);
 		expect(readTestResult("../x", "ab12", env)).toBeNull();
+	});
+
+	test("the review reader drops bad findings and clips the list", () => {
+		const dir = join(env.stateRoot, "web", "pending", "rv12");
+		mkdirSync(dir, { recursive: true });
+		const good = { file: "a.ts", line: 3, severity: "high", summary: "<b>x</b>" };
+		writeFileSync(join(dir, "review.json"), JSON.stringify({ verdict: "changes", summary: "s", findings: [good, { ...good, severity: "bogus" }, ...Array(30).fill(good)] }));
+		const r = readReview("web", "rv12", env);
+		expect(r?.findings.length).toBe(19);
+		expect(r?.findings[0].line).toBe(3);
+		expect(renderToStaticMarkup(ReviewCard({ result: r! }))).toContain("&lt;b&gt;");
+		writeFileSync(join(dir, "review.json"), JSON.stringify({ verdict: "bogus" }));
+		expect(readReview("web", "rv12", env)).toBeNull();
 	});
 });
 

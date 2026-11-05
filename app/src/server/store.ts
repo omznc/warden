@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import parseDiff from "parse-diff";
 import { SCOUTS } from "@/lib/scouts";
 import { FIX_EFFORTS, FIX_MODELS, FIX_RUNS_DEFAULT, FIX_SCOUT_RE, type FixRuns } from "@/lib/settings";
-import type { CostView, ItemDetail, ItemMeta, ItemSummary, Mode, Project, Run, TestResult, TestStatus } from "@/lib/types";
+import type { CostView, ItemDetail, ItemMeta, ItemSummary, Mode, Project, ReviewFinding, ReviewResult, ReviewVerdict, Run, TestResult, TestStatus } from "@/lib/types";
 import { type Env, env } from "./env";
 import { readJson, readText, writeJsonAtomic } from "./fsio";
 import { isName, RUN_ID, stateDir } from "./paths";
@@ -268,6 +268,26 @@ export function readTestResult(project: string, id: string, e: Env = env()): Tes
 	};
 }
 
+const SEVERITY = ["low", "medium", "high"] as const;
+
+// review.json is untrusted. The runner checks it, but the UI keeps only known fields and caps them again.
+export function readReview(project: string, id: string, e: Env = env()): ReviewResult | null {
+	if (!isName(project) || !isName(id)) return null;
+	const raw = readJson<Record<string, unknown> | null>(`${stateDir(e.stateRoot, project, "pending", id)}/review.json`, null);
+	if (!raw || typeof raw !== "object" || !["ok", "changes", "error"].includes(raw.verdict as string)) return null;
+	const list = Array.isArray(raw.findings) ? raw.findings.slice(0, 20) : [];
+	const findings = list.map(reviewFinding).filter((f): f is ReviewFinding => f !== null);
+	return { verdict: raw.verdict as ReviewVerdict, summary: str(raw.summary, 500) ?? "", findings };
+}
+
+function reviewFinding(f: Record<string, unknown> | null): ReviewFinding | null {
+	if (!f || typeof f !== "object" || !SEVERITY.includes(f.severity as (typeof SEVERITY)[number])) return null;
+	const file = str(f.file, 300);
+	const summary = str(f.summary, 500);
+	if (!file || !summary) return null;
+	return { file, line: typeof f.line === "number" && f.line >= 0 ? Math.floor(f.line) : null, severity: f.severity as ReviewFinding["severity"], summary };
+}
+
 export const TITLE_MAX = 300;
 export const BODY_MAX = 60_000;
 
@@ -335,6 +355,7 @@ export function itemDetail(id: string, project: string | undefined, e: Env = env
 		branch: `warden/${meta.fingerprint}`,
 		run,
 		tests: hasDiff(meta.kind) ? readTestResult(found.project, id, e) : null,
+		review: hasDiff(meta.kind) ? readReview(found.project, id, e) : null,
 		staleDays: staleDays(e),
 		pendingTotal: waiting.length,
 		nextPendingId: next ? next.id : null,

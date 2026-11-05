@@ -7,6 +7,7 @@ import { SeverityBadge } from "@/components/badges";
 import { ItemState } from "@/components/gh-state";
 import { DiffView } from "@/components/diff-view";
 import { EditForm, Footer } from "@/components/edit-form";
+import { ReviewCard } from "@/components/review-card";
 import { TestsCard } from "@/components/tests-card";
 import { Button } from "@/components/ui/button";
 import { Markdown, safeHref } from "@/components/markdown";
@@ -165,6 +166,7 @@ function PrBody({ item, narrow, file, onFile, description }: { item: ItemDetail;
 	const side = (
 		<div className="space-y-4">
 			{description}
+			<ReviewCard result={item.review} />
 			<TestsCard result={item.tests} />
 			<Source item={item} />
 		</div>
