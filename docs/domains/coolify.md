@@ -18,7 +18,7 @@ Warden reads Coolify with the GET method only. It never changes anything on Cool
 - `projects.json` holds `coolify: [{instance, app_uuid}]` for each project (at most 10).
 - `discover.sh` lists the apps of each instance in `discovery.json`: name, uuid, repository, domain, status.
 - The scout `coolify` gets `coolify.json` and `coolify-logs/` in its state directory. The runner keeps the digest in `<project>/coolify.seen.json`.
-  The runner writes the digest only after a run that handled all findings. A finding that a dry run only logged, a blocked finding, or a finding that a cap or the mode skipped, leaves the digest unchanged. The next run then reads the same data again.
+  The runner writes the digest only after a run that handled all findings. A finding that a dry run only logged, a blocked finding, a finding that a cap or the mode skipped, or a `pr` that touches a file of another author's open PR (`skipped-open-pr`), leaves the digest unchanged. The next run then reads the same data again.
 
 ## API facts (Coolify 4.5.3)
 
