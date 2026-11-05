@@ -25,7 +25,7 @@ For the item files, read `items.md`. For the inbox, read `secrets.md`.
 - `/state/<project>/<scout>/`: the directory of the agent: `scratchpad.md` (notes between runs), and copies of the trusted input (`issues.json`, `prs.json`, `coolify.json`, `coolify-logs/`). The agent can write here. Do not trust a file in it.
 - `/state/<project>/<scout>.seen.json`, `/state/<project>/coolify.seen.json`: what the runner handled. They are in the closed project directory, so the agent cannot change them.
 - `/state/<project>/pending/<id>/`: the items. A `pr` or `pr-update` item can also have `review.json` (the independent review: `verdict`, `summary`, `findings`). The runner writes it before `meta.json`. The UI reads it and keeps only known fields. See `items.md`.
-- `/work/<project>`: the repository checkout. Only the runner makes it.
+- `/work/<project>`: the repository checkout. Only the runner makes it. It keeps no state of its own, so `checkout_reset` deletes and clones it again when git cannot fetch or reset it.
 
 ## runs.jsonl
 

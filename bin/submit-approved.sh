@@ -51,11 +51,9 @@ submit_pr() { # meta-file repo; prints the PR url
 	checkout=$WORK_ROOT/$proj
 	br=warden/$fp
 	gh auth setup-git >&2
-	[[ -d $checkout/.git ]] || gh repo clone "$repo" "$checkout" >/dev/null
 	def=$(gh repo view "$repo" --json defaultBranchRef -q .defaultBranchRef.name)
 	# run-scout.sh leaves the checkout on the PR branch. Git refuses to fetch into a checked-out branch.
-	gq -C "$checkout" fetch -q origin || return 1
-	gq -C "$checkout" checkout -q -f --detach "origin/$def" || return 1
+	checkout_reset "$checkout" "$repo" "$def" || return 1
 	gq -C "$checkout" fetch -q --force "$d/bundle" "refs/heads/$br:refs/heads/$br" || return 1
 	# The default branch can move between the run and the approval. Do not open a PR that conflicts with it.
 	# merge-tree exits 1 for a conflict only. Any other non-zero code is a git error, not a stale change.
@@ -88,7 +86,7 @@ submit_pr_update() { # meta-file repo; prints the PR url. Pushes only when the r
 	[[ $n =~ ^[0-9]+$ && $base =~ ^[0-9a-f]{40}$ ]] || { echo "bad PR number or base"; return 1; }
 	checkout=$WORK_ROOT/$proj
 	gh auth setup-git >&2
-	[[ -d $checkout/.git ]] || gh repo clone "$repo" "$checkout" >/dev/null
+	checkout_reset "$checkout" "$repo" "$(gh repo view "$repo" --json defaultBranchRef -q .defaultBranchRef.name)" || { echo "cannot reset the checkout"; return 1; }
 	info=$(gh pr view "$n" -R "$repo" --json headRefName,state,url) || { echo "cannot read PR $n"; return 1; }
 	ref=$(jq -r '.headRefName' <<<"$info")
 	# Only a warden branch gets a push.

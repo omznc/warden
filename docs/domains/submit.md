@@ -58,7 +58,7 @@ Issues and comments do not use the checkout. They go out at once.
 
 ## Pull request
 
-- The checkout in `$WORK_ROOT/<project>` is cloned if it does not exist. The script fetches `origin` and detaches at the default branch.
+- The checkout in `$WORK_ROOT/<project>` is cloned if it does not exist. The script fetches `origin` and detaches at the default branch (`checkout_reset` in `lib.sh`). If git fails there, the script deletes the checkout and clones it again one time. A crash can leave empty refs or empty objects, and then each run fails.
 - It fetches the bundle of the item into `refs/heads/warden/<fp>` with `--force`, then pushes that branch. The agent never pushes.
 - The body is the item body plus `Refs #<n>` when `related_issue` is set. The PR is a draft with the label `warden`.
 - The ledger gets `pr:<fp> -> PR number`.

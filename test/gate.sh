@@ -278,6 +278,17 @@ check "the second finding does not carry the first change" test ! -e "$pend/dup-
 check "the checkout is at the base after the run" test -z "$(git -C "$WORK_ROOT/demo" status --porcelain)"
 check "the skipped change left no commit" bash -c "test \"\$(git -C '$WORK_ROOT/demo' rev-list --count origin/main..HEAD)\" = 0"
 
+echo "== Case L2: a crash left an empty branch ref and empty files"
+co=$WORK_ROOT/demo
+git -C "$co" checkout -q -b warden/run-crashed
+: >"$co/.git/refs/heads/warden/run-crashed"
+: >"$co/README"
+scout_run after-crash >"$t/l2.out" 2>&1 || { cat "$t/l2.out"; bad "run-scout exit L2"; }
+check "the run clones the broken checkout again" grep -q 'is broken; clone it again' "$t/l2.out"
+check "the run after the crash is ok" test "$(tail -n 1 "$runs" | jq -r .status)" = ok
+check "the new clone has the file content" test "$(cat "$co/README")" = seed
+check "the item of the run is saved" test -f "$pend/after-crash/meta.json"
+
 echo "== Case M: blocked paths at any depth"
 n=0
 for f in package.json packages/a/package.json sub/Makefile a/b/Dockerfile.dev CODEOWNERS docs/.github/x.yml yarn.lock x/bun.lockb .npmrc app/bunfig.toml .gitattributes; do

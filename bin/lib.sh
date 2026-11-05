@@ -364,6 +364,20 @@ checkout_unlock() {
 	CHECKOUT_FD=
 }
 
+# checkout_reset <dir> <repo> <branch>: clone the repo if the dir has no clone, fetch, and detach at origin/<branch>.
+# A crash can leave empty refs, objects or an index. Then git fails on each run, so clone again one time.
+# The checkout keeps no state of its own: PR branches come from bundles, and run-scout.sh deletes the local warden branches.
+checkout_reset() {
+	[[ $1 == "$WORK_ROOT"/* ]] || return 1
+	checkout_sync "$@" && return 0
+	echo "the checkout $1 is broken; clone it again" >&2
+	rm -rf "$1" && checkout_sync "$@"
+}
+checkout_sync() {
+	{ [[ -d $1/.git ]] || gh repo clone "$2" "$1"; } >&2 &&
+		gitc -C "$1" fetch -q origin >&2 && gitc -C "$1" checkout -q -f --detach "origin/$3" >&2
+}
+
 # url_ok <url>: a http or https URL with a plain host, at most 500 characters, no user info.
 url_ok() {
 	local re='^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[^[:space:]"<>\\]*)?$'

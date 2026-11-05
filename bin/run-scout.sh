@@ -74,6 +74,8 @@ cleanup() {
 	health_record "$proj" "$scout" "$rc" || true
 }
 trap cleanup EXIT
+# Without die, the record shows the command that stopped the run. BASH_COMMAND is the source text, with no values.
+trap '[[ -n $err ]] || err="line $LINENO: $BASH_COMMAND"' ERR
 
 [[ $MODE == dry || $MODE == issues || $MODE == prs ]] || die "MODE must be dry, issues or prs"
 mkdir -p "$STATE_ROOT/running"
@@ -123,11 +125,9 @@ rm -f "$state/seen.json"
 
 # Git credentials for fetch and push. The agent runs without GH_TOKEN, so it cannot use them.
 gh auth setup-git
-[[ -d $checkout/.git ]] || gh repo clone "$repo" "$checkout"
-cd "$checkout"
 def=$(gh repo view "$repo" --json defaultBranchRef -q .defaultBranchRef.name)
-git fetch -q origin
-git checkout -q -f --detach "origin/$def"
+checkout_reset "$checkout" "$repo" "$def" || die "cannot reset the checkout of $repo"
+cd "$checkout"
 git for-each-ref --format='%(refname:short)' 'refs/heads/warden/' | xargs -r git branch -q -D
 git clean -fdxq
 git checkout -q -b "warden/run-$(date -u +%Y%m%d-%H%M%S)"
