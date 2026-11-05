@@ -57,6 +57,11 @@ submit_pr() { # meta-file repo; prints the PR url
 	gq -C "$checkout" fetch -q origin || return 1
 	gq -C "$checkout" checkout -q -f --detach "origin/$def" || return 1
 	gq -C "$checkout" fetch -q --force "$d/bundle" "refs/heads/$br:refs/heads/$br" || return 1
+	# The default branch can move between the run and the approval. Do not open a PR that conflicts with it.
+	if ! gitc -C "$checkout" merge-tree --write-tree "origin/$def" "$br" >/dev/null 2>&1; then
+		echo "the change conflicts with $def now; run the scout again"
+		return 1
+	fi
 	gq -C "$checkout" push -q origin "$br" || return 1
 	rel=$(jq -r '.related_issue // empty' "$meta")
 	{ jq -r '.body' "$meta"; [[ -z $rel ]] || printf '\nRefs #%s\n' "$rel"; } >"$d/body.md"

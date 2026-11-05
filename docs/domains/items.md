@@ -27,7 +27,7 @@ Read `submit.md` for the write. The code for this page is in `bin/run-scout.sh` 
 - `meta.json` fields: `kind`, `fingerprint`, `project`, `scout`, `title`, `body`, `number`, `severity`, `created`, `status`, `url`, `model` (the model of the run that made the item, for example `opus`; an old item has none). A `pr` item also has `base_sha` and `related_issue`. A `pr-update` item has `number` (the PR) and `base_sha` (the head of the PR at run time).
 - The runner writes `meta.json` last, by an atomic rename. A reader never sees a partial item.
 - For `issue` and `comment`, `body` has no footer. The field `footer` holds the text that the submit step appends. The submit step does not append it when the body holds the marker already.
-- Footer for a scout finding: `Found by the <scout> scout.` and the marker `<!-- warden:fp=<key> -->`. The scouts `github-issues` and `warden-ci` write `Triage by Warden (automated).` and the key `<scout>-<number>`.
+- Footer for a scout finding: a line `---`, a logo (only when `WARDEN_ASSET_URL` is set), the line `<scout> scout · <note>`, and the marker `<!-- warden:fp=<key> -->`. The note is `reviewed by a person before it was posted`, or `posted automatically` when the project has auto-submit on. The scouts `github-issues` and `warden-ci` use the label `triage` and the key `<scout>-<number>`. The runner also deletes Claude attribution lines from the body.
 - The UI can edit `title` (one line, at most 300 characters) and `body` (at most 60000) of a pending item. It sets `edited_at`.
 - `decided_at` and `reject_reason` (at most 500 characters): written by the UI.
 - `submitted_at`, `stale_at`, `error`, `feedback_recorded`: written by the runner.
@@ -83,12 +83,26 @@ More rules:
 - With it on, the runner writes at once and saves no item: `gh issue create`, `gh issue comment`, or a push and `gh pr create --draft`.
 - The same secret scan and the same blocked paths apply. The same dedup applies, using GitHub as the source for comments.
 - A `pr-update` in auto mode is a plain push to the PR branch. It never forces. See `warden-ci.md`.
+- A `pr` or `pr-update` with a high finding in `review.json`, or with the verdict `error`, does not auto-submit. The runner saves it as a pending item for a person, and its footer says "reviewed by a person". The variable `auto_hold` in `run-scout.sh` does this.
+
+## Independent review
+
+- A run in mode `prs` gives the self-review rules (`prompts/fix-review.md`) to the agent. The run context also lists the open PRs of other authors and their files.
+- A `pr` finding that changes a file of such a PR is not saved. The run records `skipped-open-pr`. The runner does not turn it into an issue, because the finding body describes a diff.
+- Before the runner commits a `pr` or `pr-update`, it starts a second `claude` as a reviewer (`review_change` in `run-scout.sh`). A dry run has no review.
+- The reviewer has the same isolation and model as the fix agent, no MCP server, and read tools only. See `sandbox.md`. Its prompt is `prompts/review-pass.md`, the PR title and body (untrusted), and nothing from the fix run.
+- The reviewer returns `{"verdict": "ok"|"changes", "summary", "findings": [{"file", "line", "severity", "summary"}]}`. The runner keeps known fields, caps the list at 20 and the text lengths, and removes emails. A secret in the text, a bad answer, a non-zero exit or a timeout (`REVIEW_TIMEOUT`, default 900 seconds) gives `{"verdict": "error"}`. A review never fails the run.
+- The runner hashes `git status` and `git diff HEAD` before and after the review. A change discards the item and records `blocked-review`. The check of `.git/config` and `.git/hooks` also applies.
+- The result is `pending/<id>/review.json`, written before `meta.json`. The runner adds a section `## Independent review` to the body, before the footer. The UI shows the file on the review page.
+- The cost of the review adds to `cost_usd` of the run, so the daily cost cap counts it.
 
 ## Blocks
 
 - `blocked-secret`: `secret_hit` matched the title, the body or the diff. See `secrets.md`.
 - `blocked-path`: the agent changed a path that can run code. The runner keeps two lists, `blocked_path` and `blocked_any`: `.git/`, `.github/`, `.circleci/`, `.husky/`, CI files, `.gitattributes`, `CODEOWNERS`, `Makefile`, `Dockerfile*`, `Containerfile*`, `package.json`, lockfiles, `bunfig.toml`, `.npmrc`. The harness tells the agent the same list.
 - `blocked-conflict`: see `warden-ci.md`.
+- `blocked-review`: the reviewer changed the checkout.
+- `skipped-open-pr`: the change touches a file of an open PR of another author.
 
 ## Notices and events
 

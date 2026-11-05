@@ -36,6 +36,8 @@ export const ACTION_LABELS: Record<string, string> = {
 	"blocked-secret": "Blocked: secret",
 	"blocked-path": "Blocked: path",
 	"blocked-conflict": "Blocked: merge conflict",
+	"blocked-review": "Blocked: reviewer changed files",
+	"skipped-open-pr": "Skipped: file of an open PR",
 	"dry-issue": "Dry run: issue",
 	"dry-comment": "Dry run: comment",
 	"dry-pr": "Dry run: PR",

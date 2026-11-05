@@ -24,7 +24,7 @@ For the item files, read `items.md`. For the inbox, read `secrets.md`.
 - `/state/<project>/ledger.json`: fingerprint to issue number, and `pr:<fp>` to PR number.
 - `/state/<project>/<scout>/`: the directory of the agent: `scratchpad.md` (notes between runs), and copies of the trusted input (`issues.json`, `prs.json`, `coolify.json`, `coolify-logs/`). The agent can write here. Do not trust a file in it.
 - `/state/<project>/<scout>.seen.json`, `/state/<project>/coolify.seen.json`: what the runner handled. They are in the closed project directory, so the agent cannot change them.
-- `/state/<project>/pending/<id>/`: the items.
+- `/state/<project>/pending/<id>/`: the items. A `pr` or `pr-update` item can also have `review.json` (the independent review: `verdict`, `summary`, `findings`). The runner writes it before `meta.json`. The UI reads it and keeps only known fields. See `items.md`.
 - `/work/<project>`: the repository checkout. Only the runner makes it.
 
 ## runs.jsonl
@@ -32,9 +32,10 @@ For the item files, read `items.md`. For the inbox, read `secrets.md`.
 Fields: `id` (`<yyyymmddTHHMMSSZ>-<project>-<scout>`), `started`, `ended`, `project`, `scout`, `mode`, `model`, `effort`, `status`, `error`, `summary`, `turns`, `cost_usd`, `findings`.
 
 - `model` and `effort` are the values of the run. `effort` is `null` for a normal run. A run that is `skipped` before the agent starts has both as `null`. An old record has neither.
+- `cost_usd` is the cost of the agent and of the reviewer together.
 - `status` is `ok`, `error` or `skipped`. A `skipped` run has no cost. Its `error` holds the reason, for example "daily cost cap reached".
 - Each entry of `findings` has `fingerprint`, `action`, `severity`, `title`, `number`, `url`.
-- Actions: `issue`, `comment`, `pr`, `pr-update`, `pending`, `pending-<kind>`, `dry-issue`, `dry-comment`, `dry-pr`, `dry-pr-update`, `skipped-dup`, `skipped-cap`, `skipped-mode`, `blocked-secret`, `blocked-path`, `blocked-conflict`, `pr-update-failed`.
+- Actions: `issue`, `comment`, `pr`, `pr-update`, `pending`, `pending-<kind>`, `dry-issue`, `dry-comment`, `dry-pr`, `dry-pr-update`, `skipped-dup`, `skipped-cap`, `skipped-mode`, `blocked-secret`, `blocked-path`, `blocked-conflict`, `blocked-review`, `skipped-open-pr`, `pr-update-failed`.
 - The UI reads the file. A line it cannot parse is not a run.
 
 ## settings.json

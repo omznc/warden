@@ -70,6 +70,18 @@ The runner calls `agent-unlock.sh <dir>` as the user `agent`. The script gives t
 - `agent_settings` writes the settings file with Read and Edit denies for: `/proc`, `/run/warden`, `/secrets`, `/inbox`, `/tests-in`, `/tests-out`, `/tests`, `/app/bin`, the sandbox directory, `/home/runner`, and the Claude config of the agent and the runner. It also denies Edit on `.git` and `.github` of the checkout. A path that starts with `//` is an absolute path.
 - The PostHog MCP server gets the header `x-posthog-read-only: true`.
 
+## The reviewer
+
+Before the runner saves a `pr` or `pr-update`, a second `claude` reviews the change (`review_change` in `run-scout.sh`). It uses `agent_build`, so it has the same `env -i` and `sudo` path, the same user and the same model as the fix agent.
+`agent_build` takes the tool lists from `AGENT_ALLOWED` and `AGENT_DENIED` when they are set. The reviewer sets them to `agent_review_allowed` and `agent_review_denied` in `lib.sh`.
+
+- Allowed: `Read`, `Glob`, `Grep`, and `Bash` for `git status`, `git diff`, `git log`, `git show` and `ls` only.
+- Denied: every deny of the fix agent, and also `Edit`, `Write` and `NotebookEdit`.
+- No MCP server: the config is `{"mcpServers":{}}` with `--strict-mcp-config`. It gets the same settings file (the path denies) as the fix agent. It has no `--add-dir`.
+- `--max-turns` is `REVIEW_MAX_TURNS` (default 30). The runner stops it after `REVIEW_TIMEOUT` seconds (default 900).
+- After the review the runner compares the hash of `.git/config` and `.git/hooks`, and the hash of `git status` and `git diff HEAD`. A change in the first removes the checkout and fails the run. A change in the second discards the item.
+- The output is untrusted. See `items.md`.
+
 ## Checks after the run
 
 - `run-scout.sh` hashes `.git/config` and `.git/hooks` before and after the run. A change removes the checkout and fails the run.

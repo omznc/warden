@@ -71,6 +71,11 @@ EOF
 cat >"$t/bin/claude" <<'EOF'
 #!/usr/bin/env bash
 here=$(dirname "$0")
+# The independent review is a second call. It answers at once and is not counted as a run of the agent.
+if [[ "$*" == *"Independent review of a change"* ]]; then
+	jq -nc '{is_error: false, result: "{\"verdict\":\"ok\",\"summary\":\"Fine.\",\"findings\":[]}", num_turns: 1, total_cost_usd: 0.01}'
+	exit 0
+fi
 echo x >>"$here/claude.log"
 cp "$STATE_DIR/prs.json" "$here/claude.prs"
 mode=$(cat "$here/mode")

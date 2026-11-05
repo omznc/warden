@@ -32,7 +32,7 @@ Tests: `test/ci.sh`.
 
 ## Actions
 
-- `comment`: the number must equal the PR of the run. The marker key is `warden-ci-<number>`. The footer is `Triage by Warden (automated).`
+- `comment`: the number must equal the PR of the run. The marker key is `warden-ci-<number>`. The footer label is `triage`. See `docs/domains/items.md`.
 - `pr-update`: only for `warden-ci`, and the number must equal the PR of the run.
 - The agent edits files in the checkout. The checkout is detached at the head of the PR.
 - `stage_changes` stages the edits and applies the blocked paths. `save_pr_update` scans the diff of the agent for secrets and for conflict markers.
