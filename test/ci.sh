@@ -73,6 +73,10 @@ cat >"$t/bin/claude" <<'EOF'
 here=$(dirname "$0")
 # The independent review is a second call. It answers at once and is not counted as a run of the agent.
 if [[ "$*" == *"Independent review of a change"* ]]; then
+	if [[ $(cat "$here/rmode" 2>/dev/null) == high ]]; then
+		jq -nc '{is_error: false, result: "{\"verdict\":\"changes\",\"summary\":\"Bad.\",\"findings\":[{\"file\":\"a.ts\",\"line\":1,\"severity\":\"high\",\"summary\":\"Leaks data.\"}]}", num_turns: 1, total_cost_usd: 0.01}'
+		exit 0
+	fi
 	jq -nc '{is_error: false, result: "{\"verdict\":\"ok\",\"summary\":\"Fine.\",\"findings\":[]}", num_turns: 1, total_cost_usd: 0.01}'
 	exit 0
 fi
@@ -313,5 +317,21 @@ run k2
 check "a failed check on the same head starts the agent again" test "$(claude_runs)" = $((n3 + 2))
 run k3
 check "the same failed check does not start it a third time" test "$(claude_runs)" = $((n3 + 2))
+
+echo "== Case L: auto_submit, a high finding of the reviewer holds the update"
+git -C "$t/seed" fetch -q origin warden/ci-test-one
+git -C "$t/seed" checkout -q -B warden/ci-test-one FETCH_HEAD
+echo more >"$t/seed/more.txt"
+git -C "$t/seed" add more.txt
+git -C "$t/seed" commit -q -m "new head"
+git -C "$t/seed" push -q origin warden/ci-test-one
+base3=$(head_oid)
+echo edit >"$t/bin/mode"
+echo high >"$t/bin/rmode"
+echo '{"projects": {"demo": {"auto_submit": true}}}' >"$STATE_ROOT/settings.json"
+run l
+rm "$STATE_ROOT/settings.json"
+check "the held update is pending" test "$(jq -r .status "$pend/warden-ci-7-fix-${base3:0:7}/meta.json")" = pending
+check "the held update is not pushed" test "$(head_oid)" = "$base3"
 
 if ((fails == 0)); then echo "all passed"; else echo "$fails failed"; exit 1; fi

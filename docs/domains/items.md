@@ -41,7 +41,7 @@ Read `submit.md` for the write. The code for this page is in `bin/run-scout.sh` 
 | `submitting` | the write to GitHub is in progress | `submit-approved.sh` |
 | `submitted` | written, `url` is set | `submit-approved.sh` |
 | `rejected` | a person rejected it | UI |
-| `stale` | pending for more than `stale_days` | `submit-approved.sh` |
+| `stale` | pending for more than `stale_days`, or an approved PR that conflicts with the default branch now | `submit-approved.sh` |
 | `error` | the write failed, or it was cut short | `submit-approved.sh` |
 
 - The UI approves a `pending` item. It also approves an `error` item (a retry). It rejects only a `pending` item.
@@ -49,6 +49,7 @@ Read `submit.md` for the write. The code for this page is in `bin/run-scout.sh` 
 - A rejected item keeps its `meta.json`. The script removes its `bundle` and `patch.diff`.
 - On the first pass after a rejection, the script writes `- <date> REJECTED <fingerprint> "<title>": <reason>` to the scratchpad of the scout. The harness tells the agent not to propose it again. Then `feedback_recorded` is true.
 - Stale: `stale_days` in `settings.json` (default 30, 1 to 3650). The age counts from `created`, then from the UTC stamp in the id, then from the mtime of the item directory. The mtime of `meta.json` does not count, because an edit rewrites it. A stale item cannot be approved. The script removes its bundle and patch.
+- An approved PR that conflicts with the default branch at submit time also turns `stale`. The script writes `stale_at` and the reason in `error`, removes the bundle and patch, and sends no notice. The next run can propose the change again.
 - `gh_state` (`open`, `closed`, `merged`), `gh_state_reason`, `gh_state_at`, `synced_at`: written by `sync-github.sh` for a `submitted` item, at most each 10 minutes. A comment item holds the state of its parent issue. The `status` does not change. A merged item, and an item closed for more than 7 days, are not read again. When a PR merges, the script deletes the local branch `warden/<fp>`.
 
 ## The 409 rule
